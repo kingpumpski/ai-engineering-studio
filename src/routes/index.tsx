@@ -57,10 +57,10 @@ function Home() {
           </a>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#agents" className="story-link">Agents</a>
+            <a href="#orchestrator" className="story-link">Orchestrator</a>
             <a href="#workflow" className="story-link">Workflow</a>
-            <a href="#capabilities" className="story-link">Capabilities</a>
-            <a href="#mcp" className="story-link">MCP Setup</a>
-            <a href="#integrations" className="story-link">Integrations</a>
+            <a href="#mcp" className="story-link">MCP</a>
+            <a href="#builder" className="story-link">Builder</a>
           </nav>
           <a href="#mcp" className="text-xs md:text-sm px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition">
             Get started
