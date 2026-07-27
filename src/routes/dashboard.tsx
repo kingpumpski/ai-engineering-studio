@@ -37,6 +37,13 @@ function Dashboard() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<Agent | null>(null);
   const [view, setView] = useState<"grid" | "table">("table");
+  const [now, setNow] = useState<string>("");
+  useEffect(() => {
+    const tick = () => setNow(new Date().toLocaleTimeString());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const filtered = useMemo(
     () =>
