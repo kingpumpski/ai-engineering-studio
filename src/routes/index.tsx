@@ -107,7 +107,30 @@ function Home() {
         </div>
       </section>
 
-      {/* AGENTS */}
+      {/* ORCHESTRATOR */}
+      <section id="orchestrator" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <p className="text-xs font-mono text-primary uppercase tracking-widest">The hub</p>
+            <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-4">One orchestrator, many specialists</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              The Executive Orchestrator decomposes goals, picks the right model per task, delegates to specialists,
+              detects blockers, retries failures, resolves conflicts, and merges outputs. Every specialist reports back
+              through it — no crosstalk, no drift.
+            </p>
+            <ul className="mt-6 space-y-2.5">
+              {["Plan → delegate → monitor → merge","Per-task model routing (cost, latency, capability)","Long-term memory with indexed retrieval","Checkpoints + rollback on every major change","Human-in-the-loop for destructive operations"].map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm">
+                  <Icons.CheckCircle2 className="size-4 text-primary mt-0.5 shrink-0" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <OrchestratorDiagram />
+        </div>
+      </section>
+
       <section id="agents" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
