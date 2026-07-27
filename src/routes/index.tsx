@@ -97,8 +97,8 @@ function Home() {
               { k: "35+", v: "Languages" },
               { k: "19", v: "Workflow stages" },
               { k: "10+", v: "MCP integrations" },
-            ].map((s) => (
-              <div key={s.v} className="glass rounded-xl p-4 animate-float" style={{ animationDelay: `${Math.random()}s` }}>
+            ].map((s, i) => (
+              <div key={s.v} className="glass rounded-xl p-4 animate-float" style={{ animationDelay: `${i * 0.25}s` }}>
                 <div className="text-3xl font-bold text-gradient">{s.k}</div>
                 <div className="text-xs text-muted-foreground mt-1">{s.v}</div>
               </div>
