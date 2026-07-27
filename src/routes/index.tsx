@@ -5,6 +5,8 @@ import { AGENTS, CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent }
 import { AgentCard } from "@/components/AgentCard";
 import { AgentDialog } from "@/components/AgentDialog";
 import { MCPSetup } from "@/components/MCPSetup";
+import { TeamBuilder } from "@/components/TeamBuilder";
+import { OrchestratorDiagram } from "@/components/OrchestratorDiagram";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -55,10 +57,10 @@ function Home() {
           </a>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#agents" className="story-link">Agents</a>
+            <a href="#orchestrator" className="story-link">Orchestrator</a>
             <a href="#workflow" className="story-link">Workflow</a>
-            <a href="#capabilities" className="story-link">Capabilities</a>
-            <a href="#mcp" className="story-link">MCP Setup</a>
-            <a href="#integrations" className="story-link">Integrations</a>
+            <a href="#mcp" className="story-link">MCP</a>
+            <a href="#builder" className="story-link">Builder</a>
           </nav>
           <a href="#mcp" className="text-xs md:text-sm px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition">
             Get started
@@ -105,7 +107,30 @@ function Home() {
         </div>
       </section>
 
-      {/* AGENTS */}
+      {/* ORCHESTRATOR */}
+      <section id="orchestrator" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <p className="text-xs font-mono text-primary uppercase tracking-widest">The hub</p>
+            <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-4">One orchestrator, many specialists</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              The Executive Orchestrator decomposes goals, picks the right model per task, delegates to specialists,
+              detects blockers, retries failures, resolves conflicts, and merges outputs. Every specialist reports back
+              through it — no crosstalk, no drift.
+            </p>
+            <ul className="mt-6 space-y-2.5">
+              {["Plan → delegate → monitor → merge","Per-task model routing (cost, latency, capability)","Long-term memory with indexed retrieval","Checkpoints + rollback on every major change","Human-in-the-loop for destructive operations"].map((f) => (
+                <li key={f} className="flex items-start gap-2.5 text-sm">
+                  <Icons.CheckCircle2 className="size-4 text-primary mt-0.5 shrink-0" />
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <OrchestratorDiagram />
+        </div>
+      </section>
+
       <section id="agents" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
           <div>
@@ -189,7 +214,16 @@ function Home() {
         <MCPSetup />
       </section>
 
-      {/* INTEGRATIONS */}
+      {/* TEAM BUILDER */}
+      <section id="builder" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
+        <p className="text-xs font-mono text-primary uppercase tracking-widest">Interactive</p>
+        <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-2">Build your team</h2>
+        <p className="text-muted-foreground max-w-2xl mb-8">
+          Pick the agents your project needs, assign a model to each, and export a ready-to-run orchestrator config.
+        </p>
+        <TeamBuilder />
+      </section>
+
       <section id="integrations" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
         <p className="text-xs font-mono text-primary uppercase tracking-widest">Ecosystem</p>
         <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-8">Fits your developer workflow</h2>
