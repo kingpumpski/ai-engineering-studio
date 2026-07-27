@@ -5,6 +5,8 @@ import { AGENTS, CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent }
 import { AgentCard } from "@/components/AgentCard";
 import { AgentDialog } from "@/components/AgentDialog";
 import { MCPSetup } from "@/components/MCPSetup";
+import { TeamBuilder } from "@/components/TeamBuilder";
+import { OrchestratorDiagram } from "@/components/OrchestratorDiagram";
 
 export const Route = createFileRoute("/")({
   head: () => ({
