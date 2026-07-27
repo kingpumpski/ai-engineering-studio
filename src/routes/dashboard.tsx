@@ -105,7 +105,7 @@ function Dashboard() {
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-2">
             <span className="size-2 rounded-full bg-primary animate-pulse" />
-            Orchestrator online · {new Date().toLocaleTimeString()}
+            Orchestrator online{now && ` · ${now}`}
           </div>
         </div>
 
