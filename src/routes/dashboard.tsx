@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as Icons from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AGENTS, CATEGORIES, type Agent } from "@/lib/agents-data";
 import { AgentDialog } from "@/components/AgentDialog";
 
