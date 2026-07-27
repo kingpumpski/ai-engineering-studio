@@ -214,7 +214,16 @@ function Home() {
         <MCPSetup />
       </section>
 
-      {/* INTEGRATIONS */}
+      {/* TEAM BUILDER */}
+      <section id="builder" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
+        <p className="text-xs font-mono text-primary uppercase tracking-widest">Interactive</p>
+        <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-2">Build your team</h2>
+        <p className="text-muted-foreground max-w-2xl mb-8">
+          Pick the agents your project needs, assign a model to each, and export a ready-to-run orchestrator config.
+        </p>
+        <TeamBuilder />
+      </section>
+
       <section id="integrations" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
         <p className="text-xs font-mono text-primary uppercase tracking-widest">Ecosystem</p>
         <h2 className="text-3xl md:text-4xl font-bold mt-2 mb-8">Fits your developer workflow</h2>
