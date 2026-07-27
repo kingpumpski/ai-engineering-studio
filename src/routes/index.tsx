@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import * as Icons from "lucide-react";
 import { useMemo, useState } from "react";
 import { AGENTS, CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent } from "@/lib/agents-data";
