@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as Icons from "lucide-react";
 import { lazy, Suspense, useMemo, useState } from "react";
-import { AGENTS, CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent } from "@/lib/agents-data";
+import { CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent } from "@/lib/agents-data";
 import { AgentCard } from "@/components/AgentCard";
 import { AgentDialog } from "@/components/AgentDialog";
 import { useDebounced } from "@/hooks/use-debounced";
+import { filterAgents } from "@/lib/filter-agents";
+import { SectionSkeleton } from "@/components/Skeleton";
 
 // Code-split heavy below-the-fold sections so the hero paints faster.
 const MCPSetup = lazy(() => import("@/components/MCPSetup").then((m) => ({ default: m.MCPSetup })));
@@ -12,16 +14,6 @@ const TeamBuilder = lazy(() => import("@/components/TeamBuilder").then((m) => ({
 const OrchestratorDiagram = lazy(() =>
   import("@/components/OrchestratorDiagram").then((m) => ({ default: m.OrchestratorDiagram })),
 );
-
-function SectionSkeleton({ height = 320 }: { height?: number }) {
-  return (
-    <div
-      className="glass rounded-2xl animate-pulse"
-      style={{ height, contentVisibility: "auto", containIntrinsicSize: `${height}px` }}
-      aria-hidden="true"
-    />
-  );
-}
 
 
 export const Route = createFileRoute("/")({
