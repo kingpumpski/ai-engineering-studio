@@ -1,12 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as Icons from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { AGENTS, CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent } from "@/lib/agents-data";
 import { AgentCard } from "@/components/AgentCard";
 import { AgentDialog } from "@/components/AgentDialog";
-import { MCPSetup } from "@/components/MCPSetup";
-import { TeamBuilder } from "@/components/TeamBuilder";
-import { OrchestratorDiagram } from "@/components/OrchestratorDiagram";
+import { useDebounced } from "@/hooks/use-debounced";
+
+// Code-split heavy below-the-fold sections so the hero paints faster.
+const MCPSetup = lazy(() => import("@/components/MCPSetup").then((m) => ({ default: m.MCPSetup })));
+const TeamBuilder = lazy(() => import("@/components/TeamBuilder").then((m) => ({ default: m.TeamBuilder })));
+const OrchestratorDiagram = lazy(() =>
+  import("@/components/OrchestratorDiagram").then((m) => ({ default: m.OrchestratorDiagram })),
+);
+
+function SectionSkeleton({ height = 320 }: { height?: number }) {
+  return (
+    <div
+      className="glass rounded-2xl animate-pulse"
+      style={{ height, contentVisibility: "auto", containIntrinsicSize: `${height}px` }}
+      aria-hidden="true"
+    />
+  );
+}
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
