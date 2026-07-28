@@ -146,7 +146,9 @@ function Home() {
               ))}
             </ul>
           </div>
-          <OrchestratorDiagram />
+          <Suspense fallback={<SectionSkeleton height={420} />}>
+            <OrchestratorDiagram />
+          </Suspense>
         </div>
       </section>
 
@@ -230,7 +232,9 @@ function Home() {
         <p className="text-muted-foreground max-w-2xl mb-8">
           Every agent is exposed via the Model Context Protocol. Drop these snippets into your editor of choice, add your API keys, and the agent org appears alongside your code.
         </p>
-        <MCPSetup />
+        <Suspense fallback={<SectionSkeleton height={480} />}>
+          <MCPSetup />
+        </Suspense>
       </section>
 
       {/* TEAM BUILDER */}
@@ -240,7 +244,9 @@ function Home() {
         <p className="text-muted-foreground max-w-2xl mb-8">
           Pick the agents your project needs, assign a model to each, and export a ready-to-run orchestrator config.
         </p>
-        <TeamBuilder />
+        <Suspense fallback={<SectionSkeleton height={560} />}>
+          <TeamBuilder />
+        </Suspense>
       </section>
 
       <section id="integrations" className="max-w-7xl mx-auto px-4 md:px-6 py-20">
