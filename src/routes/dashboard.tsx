@@ -3,6 +3,8 @@ import * as Icons from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AGENTS, CATEGORIES, type Agent } from "@/lib/agents-data";
 import { AgentDialog } from "@/components/AgentDialog";
+import { useDebounced } from "@/hooks/use-debounced";
+
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -35,21 +37,37 @@ function loadFor(id: number) {
 function Dashboard() {
   const [cat, setCat] = useState<(typeof CATEGORIES)[number]>("All");
   const [q, setQ] = useState("");
+  const dq = useDebounced(q, 120);
   const [open, setOpen] = useState<Agent | null>(null);
   const [view, setView] = useState<"grid" | "table">("table");
   const [now, setNow] = useState<string>("");
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString());
     tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | undefined;
+    const start = () => {
+      if (id == null) id = setInterval(tick, 1000);
+    };
+    const stop = () => {
+      if (id != null) {
+        clearInterval(id);
+        id = undefined;
+      }
+    };
+    start();
+    const onVis = () => (document.hidden ? stop() : (tick(), start()));
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVis);
+    };
   }, []);
 
   const filtered = useMemo(
     () =>
       AGENTS.filter((a) => {
         const okCat = cat === "All" || a.category === cat;
-        const s = q.toLowerCase();
+        const s = dq.toLowerCase();
         const okQ =
           !s ||
           a.name.toLowerCase().includes(s) ||
@@ -57,8 +75,9 @@ function Dashboard() {
           a.summary.toLowerCase().includes(s);
         return okCat && okQ;
       }),
-    [cat, q]
+    [cat, dq],
   );
+
 
   const stats = useMemo(() => {
     const active = AGENTS.filter((a) => statusFor(a.id) === "active").length;

@@ -1,12 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import * as Icons from "lucide-react";
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { AGENTS, CATEGORIES, CROSS_CUTTING, WORKFLOW, INTEGRATIONS, type Agent } from "@/lib/agents-data";
 import { AgentCard } from "@/components/AgentCard";
 import { AgentDialog } from "@/components/AgentDialog";
-import { MCPSetup } from "@/components/MCPSetup";
-import { TeamBuilder } from "@/components/TeamBuilder";
-import { OrchestratorDiagram } from "@/components/OrchestratorDiagram";
+import { useDebounced } from "@/hooks/use-debounced";
+
+// Code-split heavy below-the-fold sections so the hero paints faster.
+const MCPSetup = lazy(() => import("@/components/MCPSetup").then((m) => ({ default: m.MCPSetup })));
+const TeamBuilder = lazy(() => import("@/components/TeamBuilder").then((m) => ({ default: m.TeamBuilder })));
+const OrchestratorDiagram = lazy(() =>
+  import("@/components/OrchestratorDiagram").then((m) => ({ default: m.OrchestratorDiagram })),
+);
+
+function SectionSkeleton({ height = 320 }: { height?: number }) {
+  return (
+    <div
+      className="glass rounded-2xl animate-pulse"
+      style={{ height, contentVisibility: "auto", containIntrinsicSize: `${height}px` }}
+      aria-hidden="true"
+    />
+  );
+}
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,11 +46,12 @@ export const Route = createFileRoute("/")({
 function Home() {
   const [cat, setCat] = useState<(typeof CATEGORIES)[number]>("All");
   const [q, setQ] = useState("");
+  const dq = useDebounced(q, 120);
   const [open, setOpen] = useState<Agent | null>(null);
 
   const filtered = useMemo(() => AGENTS.filter((a) => {
     const okCat = cat === "All" || a.category === cat;
-    const s = q.toLowerCase();
+    const s = dq.toLowerCase();
     const okQ = !s ||
       a.name.toLowerCase().includes(s) ||
       a.role.toLowerCase().includes(s) ||
@@ -42,7 +59,8 @@ function Home() {
       a.supports?.some((x) => x.toLowerCase().includes(s)) ||
       a.knowledge?.some((x) => x.toLowerCase().includes(s));
     return okCat && okQ;
-  }), [cat, q]);
+  }), [cat, dq]);
+
 
   return (
     <div className="min-h-screen">
@@ -128,7 +146,9 @@ function Home() {
               ))}
             </ul>
           </div>
-          <OrchestratorDiagram />
+          <Suspense fallback={<SectionSkeleton height={420} />}>
+            <OrchestratorDiagram />
+          </Suspense>
         </div>
       </section>
 
@@ -212,7 +232,9 @@ function Home() {
         <p className="text-muted-foreground max-w-2xl mb-8">
           Every agent is exposed via the Model Context Protocol. Drop these snippets into your editor of choice, add your API keys, and the agent org appears alongside your code.
         </p>
-        <MCPSetup />
+        <Suspense fallback={<SectionSkeleton height={480} />}>
+          <MCPSetup />
+        </Suspense>
       </section>
 
       {/* TEAM BUILDER */}
@@ -222,7 +244,9 @@ function Home() {
         <p className="text-muted-foreground max-w-2xl mb-8">
           Pick the agents your project needs, assign a model to each, and export a ready-to-run orchestrator config.
         </p>
-        <TeamBuilder />
+        <Suspense fallback={<SectionSkeleton height={560} />}>
+          <TeamBuilder />
+        </Suspense>
       </section>
 
       <section id="integrations" className="max-w-7xl mx-auto px-4 md:px-6 py-20">

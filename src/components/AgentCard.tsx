@@ -1,12 +1,14 @@
 import * as Icons from "lucide-react";
+import { memo } from "react";
 import type { Agent } from "@/lib/agents-data";
 
-export function AgentCard({ agent, onOpen }: { agent: Agent; onOpen: (a: Agent) => void }) {
+function AgentCardImpl({ agent, onOpen }: { agent: Agent; onOpen: (a: Agent) => void }) {
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[agent.icon] ?? Icons.Sparkles;
   return (
     <button
       onClick={() => onOpen(agent)}
       className="agent-card glass text-left rounded-2xl p-5 flex flex-col gap-3 group"
+      style={{ contentVisibility: "auto", containIntrinsicSize: "220px" }}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="agent-icon size-11 rounded-xl grid place-items-center bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/20">
@@ -30,3 +32,6 @@ export function AgentCard({ agent, onOpen }: { agent: Agent; onOpen: (a: Agent) 
     </button>
   );
 }
+
+export const AgentCard = memo(AgentCardImpl);
+
