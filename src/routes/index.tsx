@@ -41,17 +41,7 @@ function Home() {
   const dq = useDebounced(q, 120);
   const [open, setOpen] = useState<Agent | null>(null);
 
-  const filtered = useMemo(() => AGENTS.filter((a) => {
-    const okCat = cat === "All" || a.category === cat;
-    const s = dq.toLowerCase();
-    const okQ = !s ||
-      a.name.toLowerCase().includes(s) ||
-      a.role.toLowerCase().includes(s) ||
-      a.summary.toLowerCase().includes(s) ||
-      a.supports?.some((x) => x.toLowerCase().includes(s)) ||
-      a.knowledge?.some((x) => x.toLowerCase().includes(s));
-    return okCat && okQ;
-  }), [cat, dq]);
+  const filtered = useMemo(() => filterAgents(cat, dq, "full"), [cat, dq]);
 
 
   return (
