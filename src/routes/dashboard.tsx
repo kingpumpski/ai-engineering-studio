@@ -1,6 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import * as Icons from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { AGENTS, CATEGORIES, type Agent } from "@/lib/agents-data";
 import { AgentDialog } from "@/components/AgentDialog";
@@ -9,8 +9,26 @@ import { useInfiniteList } from "@/hooks/use-infinite-list";
 import { useContainerWidth } from "@/hooks/use-container-width";
 import { filterAgents } from "@/lib/filter-agents";
 import { AgentCardSkeleton, AgentRowSkeleton, Skeleton } from "@/components/Skeleton";
+import { count as perfCount, mark, measure, startScrollFpsSampler } from "@/lib/telemetry";
+
+type DashSearch = {
+  q?: string;
+  cat?: (typeof CATEGORIES)[number];
+  view?: "grid" | "table";
+};
+
+const CATSET = new Set<string>(CATEGORIES as readonly string[]);
 
 export const Route = createFileRoute("/dashboard")({
+  validateSearch: (raw: Record<string, unknown>): DashSearch => {
+    const q = typeof raw.q === "string" && raw.q.length ? raw.q : undefined;
+    const cat =
+      typeof raw.cat === "string" && CATSET.has(raw.cat)
+        ? (raw.cat as (typeof CATEGORIES)[number])
+        : undefined;
+    const view = raw.view === "grid" || raw.view === "table" ? raw.view : undefined;
+    return { q, cat, view };
+  },
   head: () => ({
     meta: [
       { title: "Agent Dashboard — Synthesis" },
@@ -43,19 +61,46 @@ function loadFor(id: number) {
 }
 
 function Dashboard() {
-  const [cat, setCat] = useState<(typeof CATEGORIES)[number]>("All");
-  const [q, setQ] = useState("");
+  const search = Route.useSearch();
+  const navigate = useNavigate({ from: "/dashboard" });
+
+  const cat = search.cat ?? "All";
+  const view = search.view ?? "table";
+  const [q, setQ] = useState(search.q ?? "");
   const dq = useDebounced(q, 150);
   const [open, setOpen] = useState<Agent | null>(null);
-  const [view, setView] = useState<"grid" | "table">("table");
   const [ready, setReady] = useState(false);
   const [now, setNow] = useState<string>("");
 
+  // Telemetry: mount → ready duration + render count.
   useEffect(() => {
-    // brief mount transition for smooth skeleton → content fade
-    const t = setTimeout(() => setReady(true), 120);
+    mark("dashboard.mount");
+    const t = setTimeout(() => {
+      setReady(true);
+      const dur = measure("dashboard.ready", "dashboard.mount");
+      // eslint-disable-next-line no-console
+      console.debug(`[perf] dashboard ready in ${dur.toFixed(0)}ms`);
+    }, 120);
     return () => clearTimeout(t);
   }, []);
+  perfCount("dashboard.render");
+
+  // Keep URL in sync with debounced query (avoid navigating on every keystroke).
+  useEffect(() => {
+    const next: DashSearch = {
+      q: dq || undefined,
+      cat: cat === "All" ? undefined : cat,
+      view: view === "table" ? undefined : view,
+    };
+    // Only navigate when something actually changed.
+    if (next.q === search.q && next.cat === search.cat && next.view === search.view) return;
+    navigate({ search: next, replace: true });
+  }, [dq, cat, view, navigate, search.q, search.cat, search.view]);
+
+  const setCat = (c: (typeof CATEGORIES)[number]) =>
+    navigate({ search: (s) => ({ ...s, cat: c === "All" ? undefined : c }), replace: false });
+  const setView = (v: "grid" | "table") =>
+    navigate({ search: (s) => ({ ...s, view: v === "table" ? undefined : v }), replace: false });
 
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString());
@@ -79,9 +124,9 @@ function Dashboard() {
     };
   }, []);
 
-  // Cached across renders + navigations via module-level Map.
   const filtered = useMemo(() => filterAgents(cat, dq), [cat, dq]);
-  const { visible, hasMore, sentinelRef, loadMore, total } = useInfiniteList(filtered, PAGE_SIZE);
+  const { visible, hasMore, sentinelRef, loadMore, prefetchNext, total } =
+    useInfiniteList(filtered, PAGE_SIZE);
 
   const stats = useMemo(() => {
     const active = AGENTS.filter((a) => statusFor(a.id) === "active").length;
@@ -126,13 +171,12 @@ function Dashboard() {
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-1">Agent dashboard</h1>
             <p className="text-muted-foreground mt-1 text-sm">Live status, load, and configuration for every agent in your org.</p>
           </div>
-          <div className="text-xs text-muted-foreground flex items-center gap-2">
+          <div className="text-xs text-muted-foreground flex items-center gap-2" aria-live="polite">
             <span className="size-2 rounded-full bg-primary animate-pulse" />
             Orchestrator online{now && ` · ${now}`}
           </div>
         </div>
 
-        {/* STAT CARDS */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {ready ? (
             <>
@@ -197,22 +241,23 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* FILTERS */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4" role="toolbar" aria-label="Agent filters">
           <div className="relative flex-1 min-w-[180px] sm:max-w-sm">
             <Icons.Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search agents…"
+              aria-label="Search agents"
               className="w-full pl-9 pr-3 py-2 rounded-lg glass text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
-          <div className="flex flex-wrap gap-1.5 order-3 sm:order-none w-full sm:w-auto">
+          <div className="flex flex-wrap gap-1.5 order-3 sm:order-none w-full sm:w-auto" role="group" aria-label="Category">
             {CATEGORIES.map((c) => (
               <button
                 key={c}
                 onClick={() => setCat(c)}
+                aria-pressed={cat === c}
                 className={`text-xs px-3 py-1.5 rounded-full border transition ${
                   cat === c ? "bg-primary text-primary-foreground border-primary" : "glass hover:border-primary/40"
                 }`}
@@ -221,15 +266,17 @@ function Dashboard() {
               </button>
             ))}
           </div>
-          <div className="ml-auto flex rounded-lg glass overflow-hidden">
+          <div className="ml-auto flex rounded-lg glass overflow-hidden" role="group" aria-label="View mode">
             <button
               onClick={() => setView("table")}
+              aria-pressed={view === "table"}
               className={`px-3 py-1.5 text-xs flex items-center gap-1.5 ${view === "table" ? "bg-primary text-primary-foreground" : ""}`}
             >
               <Icons.List className="size-3.5" /> <span className="hidden sm:inline">Table</span>
             </button>
             <button
               onClick={() => setView("grid")}
+              aria-pressed={view === "grid"}
               className={`px-3 py-1.5 text-xs flex items-center gap-1.5 ${view === "grid" ? "bg-primary text-primary-foreground" : ""}`}
             >
               <Icons.LayoutGrid className="size-3.5" /> <span className="hidden sm:inline">Grid</span>
@@ -237,29 +284,40 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* RESULT META */}
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-          <span>
+          <span aria-live="polite">
             Showing <span className="font-mono text-foreground">{visible.length}</span> of{" "}
             <span className="font-mono text-foreground">{total}</span>
           </span>
           {hasMore && (
-            <button onClick={loadMore} className="text-primary hover:underline">Load more</button>
+            <button
+              onClick={() => {
+                loadMore();
+                prefetchNext();
+              }}
+              onMouseEnter={prefetchNext}
+              onFocus={prefetchNext}
+              className="text-primary hover:underline"
+            >
+              Load more
+            </button>
           )}
         </div>
 
-        {/* LIST */}
         {!ready ? (
           <ListSkeleton view={view} />
         ) : view === "table" ? (
-          <VirtualTable items={visible} onOpen={setOpen} />
+          <VirtualTable items={visible} onOpen={setOpen} onNearEnd={prefetchNext} />
         ) : (
-          <VirtualGrid items={visible} onOpen={setOpen} />
+          <VirtualGrid items={visible} onOpen={setOpen} onNearEnd={prefetchNext} />
         )}
 
-        {/* SENTINEL for infinite scroll */}
         {hasMore && (
-          <div ref={sentinelRef} className="h-12 mt-4 grid place-items-center text-xs text-muted-foreground">
+          <div
+            ref={sentinelRef}
+            className="h-12 mt-4 grid place-items-center text-xs text-muted-foreground"
+            aria-hidden="true"
+          >
             <div className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-primary animate-pulse" />
               Loading more agents…
@@ -279,12 +337,40 @@ function Dashboard() {
   );
 }
 
+/* ---------- Keyboard nav helper (roving tabindex) ---------- */
+
+function useRovingFocus(count: number, cols: number) {
+  const [focus, setFocus] = useState(0);
+  const onKey = useCallback(
+    (e: React.KeyboardEvent) => {
+      let next = focus;
+      switch (e.key) {
+        case "ArrowRight": next = Math.min(count - 1, focus + 1); break;
+        case "ArrowLeft":  next = Math.max(0, focus - 1); break;
+        case "ArrowDown":  next = Math.min(count - 1, focus + cols); break;
+        case "ArrowUp":    next = Math.max(0, focus - cols); break;
+        case "Home":       next = 0; break;
+        case "End":        next = count - 1; break;
+        default: return;
+      }
+      e.preventDefault();
+      setFocus(next);
+    },
+    [focus, count, cols],
+  );
+  return { focus, setFocus, onKey };
+}
+
 /* ---------- Virtualized table ---------- */
 
-function VirtualTable({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) => void }) {
+function VirtualTable({
+  items, onOpen, onNearEnd,
+}: { items: Agent[]; onOpen: (a: Agent) => void; onNearEnd: () => void }) {
   const { ref, width } = useContainerWidth<HTMLDivElement>();
   const isCompact = width > 0 && width < 720;
   const parentRef = ref;
+  const rowsRef = useRef<Record<number, HTMLDivElement | null>>({});
+  const { focus, setFocus, onKey } = useRovingFocus(items.length, 1);
 
   const virtualizer = useVirtualizer({
     count: items.length,
@@ -293,12 +379,34 @@ function VirtualTable({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) =>
     overscan: 8,
   });
 
+  useEffect(() => {
+    perfCount("virtual.table.mount");
+    const el = parentRef.current;
+    if (!el) return;
+    return startScrollFpsSampler(el);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Prefetch when the last virtual item is within 3 rows of the end.
+  const virtualItems = virtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (last && last.index >= items.length - 3) onNearEnd();
+  }, [virtualItems, items.length, onNearEnd]);
+
+  useEffect(() => {
+    rowsRef.current[focus]?.focus({ preventScroll: false });
+    virtualizer.scrollToIndex(focus, { align: "auto" });
+  }, [focus, virtualizer]);
+
+  perfCount("virtual.table.render", virtualItems.length);
+
   return (
     <div className="glass rounded-xl overflow-hidden">
-      {/* header (kept outside scroll for stickiness) */}
       <div
         className="hidden sm:grid text-xs uppercase tracking-wider text-muted-foreground bg-secondary/40 px-4 py-3 font-medium"
         style={{ gridTemplateColumns: isCompact ? "1fr auto" : "2fr 1fr 1.2fr 1.2fr 0.8fr auto" }}
+        role="presentation"
       >
         <div>Agent</div>
         {!isCompact && <div>Category</div>}
@@ -312,27 +420,48 @@ function VirtualTable({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) =>
         ref={parentRef}
         className="overflow-auto"
         style={{ height: "min(70vh, 640px)", contain: "strict" }}
+        role="table"
+        aria-label="Agents"
+        aria-rowcount={items.length}
+        onKeyDown={onKey}
       >
-        <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
-          {virtualizer.getVirtualItems().map((v) => {
+        <div
+          style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}
+          role="rowgroup"
+        >
+          {virtualItems.map((v) => {
             const a = items[v.index];
             if (!a) return null;
             const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[a.icon] ?? Icons.Sparkles;
             const st = statusFor(a.id);
             const load = loadFor(a.id);
+            const isFocused = focus === v.index;
             return (
               <div
                 key={a.id}
                 data-index={v.index}
-                ref={virtualizer.measureElement}
-                className="absolute left-0 right-0 border-t border-border/60 hover:bg-secondary/30 transition-colors"
+                ref={(el) => {
+                  virtualizer.measureElement(el);
+                  rowsRef.current[v.index] = el;
+                }}
+                role="row"
+                aria-rowindex={v.index + 1}
+                tabIndex={isFocused ? 0 : -1}
+                onFocus={() => setFocus(v.index)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onOpen(a);
+                  }
+                }}
+                className="absolute left-0 right-0 border-t border-border/60 hover:bg-secondary/30 focus:bg-secondary/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors"
                 style={{ transform: `translateY(${v.start}px)` }}
               >
                 <div
                   className="grid items-center gap-3 px-4 py-3"
                   style={{ gridTemplateColumns: isCompact ? "1fr auto" : "2fr 1fr 1.2fr 1.2fr 0.8fr auto" }}
                 >
-                  <button onClick={() => onOpen(a)} className="flex items-center gap-3 text-left min-w-0">
+                  <button onClick={() => onOpen(a)} className="flex items-center gap-3 text-left min-w-0" role="gridcell" tabIndex={-1}>
                     <div className="size-8 shrink-0 rounded-lg grid place-items-center bg-gradient-to-br from-primary/20 to-accent/20 border border-primary/20">
                       <Icon className="size-4 text-primary" strokeWidth={1.75} />
                     </div>
@@ -345,21 +474,21 @@ function VirtualTable({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) =>
                     </div>
                   </button>
                   {!isCompact && (
-                    <div className="text-xs">
+                    <div className="text-xs" role="cell">
                       <span className="px-2 py-0.5 rounded-md bg-secondary border border-border">{a.category}</span>
                     </div>
                   )}
-                  {!isCompact && <div className="text-xs font-mono text-muted-foreground truncate">{modelFor(a.id)}</div>}
+                  {!isCompact && <div className="text-xs font-mono text-muted-foreground truncate" role="cell">{modelFor(a.id)}</div>}
                   {!isCompact && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2" role="cell">
                       <div className="h-1.5 flex-1 max-w-[100px] rounded-full bg-secondary overflow-hidden">
                         <div className="h-full bg-gradient-to-r from-primary to-accent" style={{ width: `${load}%` }} />
                       </div>
                       <span className="text-xs font-mono text-muted-foreground w-8">{load}%</span>
                     </div>
                   )}
-                  {!isCompact && <div><StatusPill s={st} /></div>}
-                  <div className="text-right">
+                  {!isCompact && <div role="cell"><StatusPill s={st} /></div>}
+                  <div className="text-right" role="cell">
                     <div className="inline-flex gap-1">
                       {!isCompact && (
                         <>
@@ -382,11 +511,15 @@ function VirtualTable({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) =>
 
 /* ---------- Virtualized responsive grid ---------- */
 
-function VirtualGrid({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) => void }) {
+function VirtualGrid({
+  items, onOpen, onNearEnd,
+}: { items: Agent[]; onOpen: (a: Agent) => void; onNearEnd: () => void }) {
   const { ref, width } = useContainerWidth<HTMLDivElement>();
   const cols = width >= 1024 ? 3 : width >= 640 ? 2 : 1;
   const rowCount = Math.ceil(items.length / cols);
   const parentRef = ref;
+  const cellsRef = useRef<Record<number, HTMLButtonElement | null>>({});
+  const { focus, setFocus, onKey } = useRovingFocus(items.length, cols);
 
   const virtualizer = useVirtualizer({
     count: rowCount,
@@ -395,18 +528,47 @@ function VirtualGrid({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) => 
     overscan: 4,
   });
 
+  useEffect(() => {
+    perfCount("virtual.grid.mount");
+    const el = parentRef.current;
+    if (!el) return;
+    return startScrollFpsSampler(el);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const virtualItems = virtualizer.getVirtualItems();
+  useEffect(() => {
+    const last = virtualItems[virtualItems.length - 1];
+    if (last && last.index >= rowCount - 2) onNearEnd();
+  }, [virtualItems, rowCount, onNearEnd]);
+
+  useEffect(() => {
+    cellsRef.current[focus]?.focus({ preventScroll: false });
+    const row = Math.floor(focus / cols);
+    virtualizer.scrollToIndex(row, { align: "auto" });
+  }, [focus, cols, virtualizer]);
+
+  perfCount("virtual.grid.render", virtualItems.length);
+
   return (
     <div
       ref={parentRef}
       className="overflow-auto"
       style={{ height: "min(70vh, 720px)", contain: "strict" }}
+      role="grid"
+      aria-label="Agents"
+      aria-rowcount={rowCount}
+      aria-colcount={cols}
+      onKeyDown={onKey}
     >
       <div style={{ height: virtualizer.getTotalSize(), position: "relative", width: "100%" }}>
-        {virtualizer.getVirtualItems().map((v) => {
+        {virtualItems.map((v) => {
           const rowItems = items.slice(v.index * cols, v.index * cols + cols);
           return (
             <div
               key={v.key}
+              role="row"
+              aria-rowindex={v.index + 1}
               className="absolute left-0 right-0 grid"
               style={{
                 transform: `translateY(${v.start}px)`,
@@ -415,15 +577,22 @@ function VirtualGrid({ items, onOpen }: { items: Agent[]; onOpen: (a: Agent) => 
                 paddingBottom: GRID_GAP,
               }}
             >
-              {rowItems.map((a) => {
+              {rowItems.map((a, colIdx) => {
+                const flatIdx = v.index * cols + colIdx;
                 const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[a.icon] ?? Icons.Sparkles;
                 const st = statusFor(a.id);
                 const load = loadFor(a.id);
+                const isFocused = focus === flatIdx;
                 return (
                   <button
                     key={a.id}
+                    ref={(el) => (cellsRef.current[flatIdx] = el)}
+                    role="gridcell"
+                    aria-colindex={colIdx + 1}
+                    tabIndex={isFocused ? 0 : -1}
+                    onFocus={() => setFocus(flatIdx)}
                     onClick={() => onOpen(a)}
-                    className="agent-card glass text-left rounded-xl p-4 flex flex-col gap-3 h-[196px]"
+                    className="agent-card glass text-left rounded-xl p-4 flex flex-col gap-3 h-[196px] focus:outline-none focus:ring-2 focus:ring-primary/50"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3 min-w-0">
