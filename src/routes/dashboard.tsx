@@ -98,9 +98,9 @@ function Dashboard() {
   }, [dq, cat, view, navigate, search.q, search.cat, search.view]);
 
   const setCat = (c: (typeof CATEGORIES)[number]) =>
-    navigate({ search: (s) => ({ ...s, cat: c === "All" ? undefined : c }), replace: false });
+    navigate({ search: (s: DashSearch) => ({ ...s, cat: c === "All" ? undefined : c }), replace: false });
   const setView = (v: "grid" | "table") =>
-    navigate({ search: (s) => ({ ...s, view: v === "table" ? undefined : v }), replace: false });
+    navigate({ search: (s: DashSearch) => ({ ...s, view: v === "table" ? undefined : v }), replace: false });
 
   useEffect(() => {
     const tick = () => setNow(new Date().toLocaleTimeString());
@@ -586,7 +586,7 @@ function VirtualGrid({
                 return (
                   <button
                     key={a.id}
-                    ref={(el) => (cellsRef.current[flatIdx] = el)}
+                    ref={(el) => { cellsRef.current[flatIdx] = el; }}
                     role="gridcell"
                     aria-colindex={colIdx + 1}
                     tabIndex={isFocused ? 0 : -1}
