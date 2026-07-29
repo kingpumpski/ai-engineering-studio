@@ -1,6 +1,7 @@
 import * as Icons from "lucide-react";
 import type { Agent } from "@/lib/agents-data";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import { getRuntime } from "@/lib/agent-capabilities";
 
 export function AgentDialog({ agent, onClose }: { agent: Agent | null; onClose: () => void }) {
   useEffect(() => {
@@ -9,7 +10,8 @@ export function AgentDialog({ agent, onClose }: { agent: Agent | null; onClose: 
     return () => window.removeEventListener("keydown", h);
   }, [onClose]);
 
-  if (!agent) return null;
+  const runtime = useMemo(() => (agent ? getRuntime(agent) : null), [agent]);
+  if (!agent || !runtime) return null;
   const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[agent.icon] ?? Icons.Sparkles;
 
   return (
@@ -40,13 +42,37 @@ export function AgentDialog({ agent, onClose }: { agent: Agent | null; onClose: 
         {agent.knowledge && <Section title="Expert Knowledge" items={agent.knowledge} tone="accent" />}
         {agent.supports && <Section title="Supports" items={agent.supports} tone="primary" />}
 
+        <div className="mt-6">
+          <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Capabilities</h4>
+          <ul className="space-y-2">
+            {runtime.capabilities.map((c) => (
+              <li key={c.id} className="p-3 rounded-lg bg-secondary/30 border border-border">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{c.name}</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">cap.{c.id}</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{c.description}</p>
+                <div className="flex flex-wrap gap-2 mt-2 text-[10px] font-mono text-muted-foreground">
+                  <span>in: {c.inputs.join(", ")}</span>
+                  <span>·</span>
+                  <span>out: {c.outputs.join(", ")}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <Section title="Recommended models" items={runtime.recommendedModels} tone="primary" />
+        <Section title="Tools" items={runtime.tools} />
+        <Section title="MCP servers" items={runtime.mcpServers} tone="accent" />
+
         <div className="mt-6 p-4 rounded-xl bg-secondary/40 border border-border">
           <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
             <Icons.Settings2 className="size-4 text-primary" /> Configuration
           </h4>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Enable this agent from the orchestrator config. Assign a preferred model (e.g. Claude Sonnet, GPT-5, Gemini Pro),
-            set tool permissions, and attach the MCP servers it needs. Toggle human-in-the-loop for destructive actions.
+            Enable this agent from the orchestrator config. Assign a preferred model, set tool permissions,
+            and attach the MCP servers it needs. Toggle human-in-the-loop for destructive actions.
           </p>
         </div>
       </div>
