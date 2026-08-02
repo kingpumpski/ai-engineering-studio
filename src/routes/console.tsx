@@ -59,7 +59,7 @@ function RunConsole() {
   const [autoScroll, setAutoScroll] = useState(true);
 
   const debounced = useDebounced(query, 180);
-  const list = useMemo(() => filterAgents(AGENTS, cat, debounced), [cat, debounced]);
+  const list = useMemo(() => filterAgents(cat, debounced, "full"), [cat, debounced]);
 
   const logRef = useRef<HTMLDivElement>(null);
 
