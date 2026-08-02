@@ -152,6 +152,7 @@ function Dashboard() {
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <Link to="/" className="story-link">Home</Link>
             <Link to="/dashboard" className="story-link text-foreground">Dashboard</Link>
+            <Link to="/console" className="story-link">Console</Link>
           </nav>
           <div className="flex items-center gap-2">
             <button className="text-xs sm:text-sm px-2.5 sm:px-3 py-1.5 rounded-lg glass hover:bg-secondary/60 transition flex items-center gap-1.5">
