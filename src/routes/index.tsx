@@ -62,6 +62,7 @@ function Home() {
             <a href="#mcp" className="story-link">MCP</a>
             <a href="#builder" className="story-link">Builder</a>
             <Link to="/dashboard" className="story-link">Dashboard</Link>
+            <Link to="/console" className="story-link">Console</Link>
           </nav>
           <a href="#mcp" className="text-xs md:text-sm px-3.5 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:opacity-90 transition">
             Get started
