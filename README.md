@@ -40,7 +40,10 @@ work memory list
 work plan "design the next module"
 work task list
 work sandbox create <task-id>
+work patch <task-id> propose
+work patch <task-id> validate
 work task approve <task-id> write
+work patch <task-id> apply
 work exec <task-id>
 work sandbox status
 work "implement seller authentication"
@@ -65,14 +68,33 @@ Policy / approval
   ↓
 Isolated Git worktree
   ↓
-Execution + tests
+Patch proposal
+  ↓
+Patch validation
+  ↓
+Human approval
+  ↓
+Apply + tests
   ↓
 Session audit
   ↓
 QA / review
 ```
 
-The execution engine records structured events under `.work/sessions/<task-id>/events.jsonl`. This provides a foundation for a future team dashboard and autonomous feedback loops.
+## Model-assisted patch proposals
+
+The patch engine uses the configured local Ollama coding model to propose a **unified Git patch**. It does not directly modify files during proposal generation.
+
+```bash
+work patch <task-id> propose
+work patch <task-id> validate
+work task approve <task-id> write
+work patch <task-id> apply
+```
+
+The proposal is stored under `.work/tasks/<task-id>/proposal.patch` and must pass `git apply --check` before application. This deliberately separates model output from repository mutation.
+
+For stronger machines, configure a larger coding model with `WORK_OLLAMA_CODING_MODEL`. The model remains replaceable without changing the agent layer.
 
 ## Isolated agent sandboxes
 
@@ -142,6 +164,13 @@ Ollama  Copilot  Cloud
      Git Sandbox
           |
           v
+    Patch Proposal
+          |
+     Validation
+          |
+       Approval
+          |
+          v
       Test / QA
           |
           v
@@ -195,6 +224,7 @@ The runtime follows least privilege:
 - deployment: denied by default
 - secrets/private keys: protected
 - agent workspaces: isolated by Git worktree
+- model output: validated before application
 
 ## Development
 
@@ -226,9 +256,10 @@ npm run build
 - Approval-gated execution sessions
 - Structured execution audit logs
 - Isolated Git worktrees
+- Model-assisted unified patch proposals
+- Patch validation before application
 
 ### Next engineering layer
-- Real model-driven patch generation and review
 - Test failure feedback loops
 - Git diff approval UI
 - GitHub issue/PR/CI workflows
