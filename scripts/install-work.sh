@@ -9,11 +9,16 @@ mkdir -p "${INSTALL_DIR}/config" "${BIN_DIR}"
 cp "${ROOT}/scripts/work.mjs" "${INSTALL_DIR}/work.mjs"
 cp "${ROOT}/scripts/work-mcp.mjs" "${INSTALL_DIR}/work-mcp.mjs"
 cp "${ROOT}/scripts/project-context.mjs" "${INSTALL_DIR}/project-context.mjs"
+cp "${ROOT}/scripts/work-task.mjs" "${INSTALL_DIR}/work-task.mjs"
 rm -rf "${INSTALL_DIR}/config"
 cp -R "${ROOT}/config" "${INSTALL_DIR}/config"
 
 cat > "${BIN_DIR}/work" <<EOF
 #!/usr/bin/env bash
+if [[ "\${1:-}" == "task" ]]; then
+  shift
+  exec node "${INSTALL_DIR}/work-task.mjs" "\$@"
+fi
 exec node "${INSTALL_DIR}/work.mjs" "\$@"
 EOF
 cat > "${BIN_DIR}/work-mcp" <<EOF
@@ -21,10 +26,6 @@ cat > "${BIN_DIR}/work-mcp" <<EOF
 exec node "${INSTALL_DIR}/work-mcp.mjs" "\$@"
 EOF
 chmod +x "${BIN_DIR}/work" "${BIN_DIR}/work-mcp"
-
-if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
-  echo "Add ${BIN_DIR} to PATH (for example: export PATH=\"\$HOME/.local/bin:\$PATH\")"
-fi
 
 echo "work runtime installed globally for this user at ${BIN_DIR}/work"
 "${BIN_DIR}/work" status || true
