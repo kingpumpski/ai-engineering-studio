@@ -17,9 +17,10 @@ jobs:
         run: |
           node --check scripts/work.mjs
           node --check scripts/work-mcp.mjs
+          node --check scripts/project-context.mjs
       - name: Validate JSON configuration
         run: |
-          node -e "for (const f of ['config/agents.json','config/models.json','config/tool-policy.json','.vscode/mcp.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON configuration valid')"
+          node -e "for (const f of ['config/agents.json','config/models.json','config/tool-policy.json','config/work.schema.json','.vscode/mcp.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON configuration valid')"
       - name: Validate shell scripts
         run: |
           bash -n scripts/install-work.sh
@@ -29,3 +30,4 @@ jobs:
           node scripts/work.mjs context
           node scripts/work.mjs agents
           node scripts/work.mjs models
+          node scripts/project-context.mjs
