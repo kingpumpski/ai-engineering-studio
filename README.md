@@ -1,24 +1,52 @@
 # AI Engineering Studio
 
-AI Engineering Studio is the control plane for a reusable, multi-agent software engineering workflow. It is designed to let the team use a single `work` command from Codespaces, VS Code terminals, JetBrains terminals, remote shells, and other IDE terminals while keeping the model/provider layer replaceable.
+AI Engineering Studio is the team's reusable AI engineering control plane. It provides one `work` command and one MCP bridge that can be used across repositories, IDEs, terminals and Codespaces while keeping agents separate from model providers.
 
-## Work runtime
+## Core idea
 
-The default runtime is **Ollama**, so the team can begin without purchasing an API plan. Cloud providers are represented as optional adapters and can be enabled later through environment variables without changing the agent architecture.
+```text
+IDE / Terminal / Codespace
+          |
+       work / MCP
+          |
+   Project Context
+          |
+    Work Orchestrator
+          |
+   Specialist Agents
+          |
+      Model Router
+     /     |      \
+  Ollama  Copilot  Cloud
+          |
+       Project
+```
 
-### Install the `work` command
+Ollama is the default so the team can start without a paid API plan. Cloud providers remain optional adapters.
 
-From this repository:
+## Install
+
+### Linux / macOS / Codespaces
 
 ```bash
 bash scripts/install-work.sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Then, from **any project directory**:
+### Windows PowerShell
+
+```powershell
+./scripts/install-work.ps1
+```
+
+The installer places the runtime in the user's `~/.work-agent` directory and exposes `work` and `work-mcp` from the user's command path.
+
+## Use from any project
 
 ```bash
 work status
+work doctor
+work context
 work agents
 work models
 work "review the authentication flow and propose fixes"
@@ -27,76 +55,58 @@ work debug "investigate this build error"
 work review
 ```
 
-The installer copies the runtime and configuration to `~/.work-agent`, so the command is not tied to the repository's current working directory.
+The runtime automatically discovers the nearest project root and reads supported local instructions: `AGENTS.md`, `WORK.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`.
+
+## IDE-native MCP
+
+The repository includes `.vscode/mcp.json` and `config/mcp.example.json`. After installation, compatible MCP clients can launch:
+
+```text
+work-mcp
+```
+
+The current bridge intentionally exposes only project context, git status, safe file reads, tracked-file search and advisory Ollama tasks. It does **not** expose arbitrary shell execution or file writes.
 
 ## Codespaces
 
-The repository includes a Dev Container Compose configuration with an Ollama service. Rebuilding the Codespace starts the Ollama service automatically and exposes it to the workspace at `http://ollama:11434`.
+Dev Container Compose starts Ollama as a separate service. The workspace waits for the Ollama health check, then bootstraps the configured coding model. Models are stored in a persistent Compose volume rather than being reinstalled into every terminal session.
 
-The initial configuration pulls one configurable coding model. Optional fast/general models can be enabled through environment variables instead of downloading every model into every Codespace.
+The default model is `qwen3:8b`, chosen as the practical local baseline. On larger machines, set `WORK_OLLAMA_CODING_MODEL=qwen3-coder` or `qwen3-coder:30b`. Ollama currently lists Qwen3-Coder with 256K context and a 30B local variant; Qwen3-Coder-Next is substantially larger and should not be the default Codespace model.
+
+## Agent system
+
+`config/agents.json` is the runtime registry. It defines specialist roles and multi-agent workflows such as:
+
+- `build`: requirements → architecture → implementation → QA → review
+- `debug`: debugging → backend/database → QA → review
+- `review`: security → code review → QA
+- `release`: QA → security → GitHub → DevOps → review
+
+The original visual agent catalogue remains the product/UI layer; the runtime registry is the execution layer.
+
+## Safety model
+
+`config/tool-policy.json` defines the security boundary. Reading and discovery are allowed by default. File writes, shell execution, commits, pushes and deployments require explicit approval and must be implemented through policy-aware tools.
+
+Protected paths include environment files, private keys and GitHub workflow definitions.
+
+## Provider strategy
+
+`config/models.json` keeps provider and model selection separate. The foundation includes adapters for Ollama, GitHub Copilot, OpenRouter, OpenAI, Anthropic, Google, DeepSeek and Hugging Face. Empty credentials do not activate cloud providers, so the local path works without an API subscription.
+
+## Validation
+
+Every branch runs runtime validation for JavaScript syntax, JSON configuration, shell syntax and project-discovery smoke tests through `.github/workflows/runtime-validation.yml`.
 
 ## Architecture
 
-```text
-IDE / Terminal / Codespace
-          |
-          v
-       work CLI
-          |
-          v
-  Work Orchestrator
-          |
-    +-----+------+----------------+
-    |            |                |
-    v            v                v
- Ollama       GitHub Copilot   Cloud adapters
- local        IDE/agent        optional
-    |            |                |
-    +------------+----------------+
-                 v
-          Specialist agents
-                 |
-      plan -> implement -> test
-                 |
-             review -> verify
-```
-
-## Agent registry
-
-`config/agents.json` contains the executable foundation for specialist roles such as architecture, requirements, frontend, backend, database, DevOps, security, QA, debugging, review, documentation, research, GitHub, and migration.
-
-The original UI agent catalogue remains useful as a visual/team-building layer; the new registry is the runtime-oriented source for the `work` command.
-
-## Model registry
-
-`config/models.json` deliberately separates **model roles** from provider implementations. The default is local Ollama. Optional providers include OpenRouter, GitHub Copilot, OpenAI, Anthropic, Google, DeepSeek, and Hugging Face.
-
-No API keys are required for the Ollama path. Do not commit provider keys to this repository.
-
-## Design goals
-
-- Local-first development with no mandatory paid API.
-- Provider/model abstraction so the team is not locked to one vendor.
-- One command, `work`, usable from any project directory.
-- Human approval before destructive or repository-writing actions.
-- Agent specialization instead of one oversized prompt.
-- Automatic project context collection.
-- CI, testing, security, GitHub and release agents as first-class capabilities.
-- A future MCP layer for IDE-native tool calling without coupling the core runtime to one editor.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the runtime boundaries and future roadmap.
 
 ## Development
 
-```sh
+```bash
 npm install
 npm run dev
 npm run lint
 npm run build
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
-- Ollama-compatible local AI runtime
