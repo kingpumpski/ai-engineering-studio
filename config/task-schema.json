@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Work Task",
+  "type": "object",
+  "required": ["id", "title", "status", "createdAt", "steps"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+    "title": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["queued", "planning", "awaiting-approval", "running", "review", "completed", "failed", "cancelled"] },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" },
+    "workflow": { "type": "string" },
+    "modelRole": { "type": "string" },
+    "steps": { "type": "array", "items": { "type": "object", "required": ["id", "agent", "status"], "properties": { "id": { "type": "string" }, "agent": { "type": "string" }, "status": { "enum": ["queued", "running", "completed", "failed", "blocked"] }, "requiresApproval": { "type": "boolean" }, "output": { "type": "string" } } } },
+    "approvals": { "type": "array", "items": { "type": "object", "required": ["id", "action", "status"], "properties": { "id": { "type": "string" }, "action": { "type": "string" }, "status": { "enum": ["pending", "approved", "rejected"] }, "requestedAt": { "type": "string" }, "resolvedAt": { "type": "string" } } } }
+  }
+}
