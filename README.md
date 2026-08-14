@@ -1,106 +1,134 @@
 # AI Engineering Studio
 
-AI Engineering Studio is the team's reusable AI engineering control plane. It provides one `work` command and one MCP bridge that can be used across repositories, IDEs, terminals and Codespaces while keeping agents separate from model providers.
+AI Engineering Studio is the team's reusable, provider-agnostic AI engineering control plane. It provides one `work` interface for terminals and IDEs, a local-first Ollama runtime, MCP integration, project discovery, specialist-agent workflows, safety policies and optional cloud providers.
 
-## Core idea
+## Core principle
 
-```text
-IDE / Terminal / Codespace
-          |
-       work / MCP
-          |
-   Project Context
-          |
-    Work Orchestrator
-          |
-   Specialist Agents
-          |
-      Model Router
-     /     |      \
-  Ollama  Copilot  Cloud
-          |
-       Project
-```
+**Agents represent engineering capability. Models represent intelligence providers.** The platform routes work between them instead of hard-coding an agent to a single model or vendor.
 
-Ollama is the default so the team can start without a paid API plan. Cloud providers remain optional adapters.
+## Install the `work` command
 
-## Install
-
-### Linux / macOS / Codespaces
+From this repository:
 
 ```bash
 bash scripts/install-work.sh
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### Windows PowerShell
+On Windows PowerShell:
 
 ```powershell
-./scripts/install-work.ps1
+.\scripts\install-work.ps1
 ```
 
-The installer places the runtime in the user's `~/.work-agent` directory and exposes `work` and `work-mcp` from the user's command path.
+After installation, `work` can be used from any project directory.
 
-## Use from any project
+## Cross-project workflow
 
 ```bash
 work status
 work doctor
 work context
+work audit
 work agents
 work models
-work "review the authentication flow and propose fixes"
+
+work init
+work memory add "Decision: use Supabase RLS for tenant isolation"
+work memory list
+
 work plan "design the next module"
+work "implement seller authentication"
 work debug "investigate this build error"
 work review
 ```
 
-The runtime automatically discovers the nearest project root and reads supported local instructions: `AGENTS.md`, `WORK.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`.
-
-## IDE-native MCP
-
-The repository includes `.vscode/mcp.json` and `config/mcp.example.json`. After installation, compatible MCP clients can launch:
-
-```text
-work-mcp
-```
-
-The current bridge intentionally exposes only project context, git status, safe file reads, tracked-file search and advisory Ollama tasks. It does **not** expose arbitrary shell execution or file writes.
-
-## Codespaces
-
-Dev Container Compose starts Ollama as a separate service. The workspace waits for the Ollama health check, then bootstraps the configured coding model. Models are stored in a persistent Compose volume rather than being reinstalled into every terminal session.
-
-The default model is `qwen3:8b`, chosen as the practical local baseline. On larger machines, set `WORK_OLLAMA_CODING_MODEL=qwen3-coder` or `qwen3-coder:30b`. Ollama currently lists Qwen3-Coder with 256K context and a 30B local variant; Qwen3-Coder-Next is substantially larger and should not be the default Codespace model.
-
-## Agent system
-
-`config/agents.json` is the runtime registry. It defines specialist roles and multi-agent workflows such as:
-
-- `build`: requirements → architecture → implementation → QA → review
-- `debug`: debugging → backend/database → QA → review
-- `review`: security → code review → QA
-- `release`: QA → security → GitHub → DevOps → review
-
-The original visual agent catalogue remains the product/UI layer; the runtime registry is the execution layer.
-
-## Safety model
-
-`config/tool-policy.json` defines the security boundary. Reading and discovery are allowed by default. File writes, shell execution, commits, pushes and deployments require explicit approval and must be implemented through policy-aware tools.
-
-Protected paths include environment files, private keys and GitHub workflow definitions.
-
-## Provider strategy
-
-`config/models.json` keeps provider and model selection separate. The foundation includes adapters for Ollama, GitHub Copilot, OpenRouter, OpenAI, Anthropic, Google, DeepSeek and Hugging Face. Empty credentials do not activate cloud providers, so the local path works without an API subscription.
-
-## Validation
-
-Every branch runs runtime validation for JavaScript syntax, JSON configuration, shell syntax and project-discovery smoke tests through `.github/workflows/runtime-validation.yml`.
+`work init` creates a project-local `.work/` state directory containing a manifest, memory, decisions and task state. The directory is designed to hold project-specific AI context without coupling the project to the Studio repository.
 
 ## Architecture
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the runtime boundaries and future roadmap.
+```text
+IDE / Terminal / Codespace
+          |
+          v
+       work CLI
+          |
+          +-------------------+
+          |                   |
+          v                   v
+ Project Discovery          Work MCP
+          |                   |
+          +---------+---------+
+                    v
+             Work Orchestrator
+                    |
+       +------------+-------------+
+       |            |             |
+       v            v             v
+    Planning      Agents       Tool Policy
+       |            |             |
+       +------------+-------------+
+                    v
+               Model Router
+                    |
+        +-----------+-----------+
+        |           |           |
+        v           v           v
+      Ollama     Copilot    Cloud adapters
+       local        IDE        optional
+        |
+        v
+   Local models
+```
+
+## Project bootstrap
+
+Run `work init` inside any repository. It creates:
+
+```text
+.work/
+├── project.json
+├── README.md
+├── .gitignore
+├── memory/
+├── decisions/
+└── tasks/
+```
+
+The manifest records project identity, detected stack, default workflow/model role and permission defaults. Sensitive runtime sessions are intended to remain local and are ignored by the generated `.work/.gitignore`.
+
+## MCP
+
+The repository includes `scripts/work-mcp.mjs` and `.vscode/mcp.json`. The MCP server currently exposes deliberately constrained tools for project context, Git status, safe file reads, repository search and advisory model tasks. Write, shell, commit, push and deployment operations remain approval-gated by design.
+
+## Ollama
+
+Ollama is the default provider and requires no paid API plan. Codespaces can start it through the Dev Container Compose setup. The model is configurable with environment variables such as:
+
+```bash
+WORK_OLLAMA_CODING_MODEL=qwen3:8b
+WORK_OLLAMA_REASONING_MODEL=qwen3
+WORK_OLLAMA_FAST_MODEL=gemma3:4b
+```
+
+For stronger local hardware, the coding role can be changed to a larger Qwen3-Coder variant without changing the agent layer.
+
+## Optional providers
+
+The model registry has adapters for Ollama, GitHub Copilot, OpenRouter, OpenAI, Anthropic, Google, DeepSeek and Hugging Face. API keys are optional and must never be committed to the repository.
+
+## Safety model
+
+The runtime follows least privilege:
+
+- read/search: allowed by default
+- file writes: approval required
+- shell execution: approval required
+- Git commit/push: approval required
+- deployment: denied by default
+- secrets/private keys: protected
+
+This boundary is intentional: the platform is being designed to work across real repositories without giving an AI unrestricted control of developer machines or production systems.
 
 ## Development
 
@@ -110,3 +138,32 @@ npm run dev
 npm run lint
 npm run build
 ```
+
+## Roadmap
+
+### Phase 1 — Runtime foundation
+- Local-first Ollama
+- Provider/model registry
+- Global `work` CLI
+- Codespaces startup
+- Specialist-agent registry
+
+### Phase 2 — Engineering control plane
+- Project discovery
+- `work init` project manifests
+- Project memory
+- MCP bridge
+- Tool permissions
+- CI validation
+
+### Phase 3 — Autonomous engineering runtime
+- Real model routing and health scoring
+- Persistent task queue
+- Agent session/audit logs
+- Safe patch/write tools
+- GitHub issue/PR/CI workflows
+- Multi-agent execution graphs
+- Project bootstrap templates
+- Team dashboard and observability
+
+The repository is intentionally being developed in these layers so local-first usage works before paid providers or advanced autonomy are required.
