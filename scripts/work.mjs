@@ -9,71 +9,28 @@ const agentConfig = JSON.parse(fs.readFileSync(path.join(runtimeRoot, 'config/ag
 const args = process.argv.slice(2);
 const command = args[0] || 'status';
 const input = args.slice(1).join(' ').trim();
-
 const env = (name, fallback) => process.env[name] || fallback;
 const ollamaModel = (role = 'coding') => { const item = modelConfig.providers.ollama.models[role] || modelConfig.providers.ollama.models.coding; return env(item.env, item.default); };
 const ollamaUrl = () => env('OLLAMA_BASE_URL', modelConfig.providers.ollama.baseUrl);
 const fail = (message) => { console.error(`work: ${message}`); process.exit(1); };
 const run = (name, args, cwd = process.cwd()) => execFileSync(name, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-
-function findProjectRoot(start = process.cwd()) {
-  let current = path.resolve(start);
-  while (current !== path.dirname(current)) {
-    if (fs.existsSync(path.join(current, '.git')) || fs.existsSync(path.join(current, 'package.json')) || fs.existsSync(path.join(current, 'pyproject.toml'))) return current;
-    current = path.dirname(current);
-  }
-  return path.resolve(start);
-}
+function findProjectRoot(start = process.cwd()) { let current = path.resolve(start); while (current !== path.dirname(current)) { if (fs.existsSync(path.join(current, '.git')) || fs.existsSync(path.join(current, 'package.json')) || fs.existsSync(path.join(current, 'pyproject.toml'))) return current; current = path.dirname(current); } return path.resolve(start); }
 function readJson(file) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } }
-function detectProject(root) {
-  const pkg = readJson(path.join(root, 'package.json'));
-  const files = new Set(fs.readdirSync(root, { withFileTypes: true }).map(e => e.name));
-  const deps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) };
-  const tech = [];
-  const checks = [['react','React'],['next','Next.js'],['vite','Vite'],['typescript','TypeScript'],['tailwindcss','Tailwind CSS'],['@tanstack/react-router','TanStack Router'],['@supabase/supabase-js','Supabase'],['@nestjs/core','NestJS'],['express','Express'],['prisma','Prisma'],['@prisma/client','Prisma'],['playwright','Playwright'],['@playwright/test','Playwright'],['vitest','Vitest']];
-  for (const [key, label] of checks) if (deps[key]) tech.push(label);
-  if (files.has('pyproject.toml') || files.has('requirements.txt')) tech.push('Python');
-  if (files.has('Dockerfile') || files.has('docker-compose.yml') || files.has('compose.yml')) tech.push('Docker');
-  if (files.has('.github')) tech.push('GitHub Actions');
-  if (files.has('.devcontainer')) tech.push('Dev Container');
-  return { root, name: pkg?.name || path.basename(root), packageManager: pkg ? (files.has('pnpm-lock.yaml') ? 'pnpm' : files.has('yarn.lock') ? 'yarn' : 'npm') : null, technologies: [...new Set(tech)] };
-}
-function collectContext() {
-  const root = findProjectRoot();
-  const project = detectProject(root);
-  let branch = '(unknown)', status = '(not a git repository)';
-  try { branch = run('git', ['branch', '--show-current'], root).trim() || '(detached)'; status = run('git', ['status', '--short'], root) || '(clean)'; } catch {}
-  let instructions = '';
-  for (const name of ['AGENTS.md', 'WORK.md', 'CLAUDE.md', '.github/copilot-instructions.md']) {
-    const file = path.join(root, name);
-    if (fs.existsSync(file)) instructions += `\n--- ${name} ---\n${fs.readFileSync(file, 'utf8').slice(0, 12000)}`;
-  }
-  return { ...project, branch, gitStatus: status, instructions };
-}
-function help() { console.log(`\nwork — cross-project AI engineering control plane\n\n  work "implement seller routes"\n  work ask "explain this error"\n  work plan "design the next phase"\n  work debug "investigate this build error"\n  work review [path]\n  work context\n  work doctor\n  work status\n  work agents\n  work models\n  work mcp\n`); }
-function generate(prompt, model) {
-  try {
-    const output = run('curl', ['-fsS', `${ollamaUrl()}/api/generate`, '-H', 'Content-Type: application/json', '-d', JSON.stringify({ model, prompt, stream: false, options: { temperature: 0.2 } })]);
-    console.log(JSON.parse(output).response || output);
-  } catch { fail(`Ollama is unavailable at ${ollamaUrl()}. Run 'work doctor'.`); }
-}
+function detectProject(root) { const pkg = readJson(path.join(root, 'package.json')); const files = new Set(fs.readdirSync(root, { withFileTypes: true }).map(e => e.name)); const deps = { ...(pkg?.dependencies || {}), ...(pkg?.devDependencies || {}) }; const tech = []; const checks = [['react','React'],['next','Next.js'],['vite','Vite'],['typescript','TypeScript'],['tailwindcss','Tailwind CSS'],['@tanstack/react-router','TanStack Router'],['@supabase/supabase-js','Supabase'],['@nestjs/core','NestJS'],['express','Express'],['prisma','Prisma'],['@prisma/client','Prisma'],['playwright','Playwright'],['@playwright/test','Playwright'],['vitest','Vitest']]; for (const [key, label] of checks) if (deps[key]) tech.push(label); if (files.has('pyproject.toml') || files.has('requirements.txt')) tech.push('Python'); if (files.has('Dockerfile') || files.has('docker-compose.yml') || files.has('compose.yml')) tech.push('Docker'); if (files.has('.github')) tech.push('GitHub Actions'); if (files.has('.devcontainer')) tech.push('Dev Container'); return { root, name: pkg?.name || path.basename(root), packageManager: pkg ? (files.has('pnpm-lock.yaml') ? 'pnpm' : files.has('yarn.lock') ? 'yarn' : files.has('bun.lock') || files.has('bun.lockb') ? 'bun' : 'npm') : null, technologies: [...new Set(tech)] }; }
+function collectContext() { const root = findProjectRoot(); const project = detectProject(root); let branch = '(unknown)', status = '(not a git repository)'; try { branch = run('git', ['branch', '--show-current'], root).trim() || '(detached)'; status = run('git', ['status', '--short'], root) || '(clean)'; } catch {} let instructions = ''; for (const name of ['AGENTS.md','WORK.md','CLAUDE.md','.github/copilot-instructions.md']) { const file = path.join(root, name); if (fs.existsSync(file)) instructions += `\n--- ${name} ---\n${fs.readFileSync(file, 'utf8').slice(0, 12000)}`; } const workDir = path.join(root, '.work'); const manifest = readJson(path.join(workDir, 'project.json')); return { ...project, branch, gitStatus: status, instructions, workDir, manifest }; }
+function help() { console.log(`\nwork — cross-project AI engineering control plane\n\n  work init\n  work status\n  work doctor\n  work context\n  work audit\n  work memory add "decision or note"\n  work memory list\n  work agents\n  work models\n  work "implement seller routes"\n  work plan "design the next phase"\n  work debug "investigate this build error"\n  work review [path]\n  work mcp\n`); }
+function generate(prompt, model) { try { const output = run('curl', ['-fsS', `${ollamaUrl()}/api/generate`, '-H', 'Content-Type: application/json', '-d', JSON.stringify({ model, prompt, stream: false, options: { temperature: 0.2 } })]); console.log(JSON.parse(output).response || output); } catch { fail(`Ollama is unavailable at ${ollamaUrl()}. Run 'work doctor'.`); } }
+function initProject() { const c = collectContext(); const dir = c.workDir; fs.mkdirSync(path.join(dir, 'memory'), { recursive: true }); fs.mkdirSync(path.join(dir, 'tasks'), { recursive: true }); fs.mkdirSync(path.join(dir, 'decisions'), { recursive: true }); const manifest = c.manifest || { schemaVersion: '1.0', project: { name: c.name, stack: c.technologies, packageManager: c.packageManager }, defaults: { workflow: 'build', modelRole: 'coding' }, permissions: { read: 'allow', search: 'allow', write: 'ask', shell: 'ask', gitCommit: 'ask', gitPush: 'ask', deploy: 'deny' } }; fs.writeFileSync(path.join(dir, 'project.json'), `${JSON.stringify(manifest, null, 2)}\n`); const gitignore = path.join(dir, '.gitignore'); if (!fs.existsSync(gitignore)) fs.writeFileSync(gitignore, 'sessions/\n*.log\n'); const readme = path.join(dir, 'README.md'); if (!fs.existsSync(readme)) fs.writeFileSync(readme, `# Work project state\n\nManaged by AI Engineering Studio. Project: ${c.name}.\n\nUse \\`work context\\`, \\`work audit\\`, and \\`work memory\\` to inspect and maintain this state.\n`); console.log(`Initialized Work project state in ${dir}`); }
+function memory(action, note) { const c = collectContext(); fs.mkdirSync(path.join(c.workDir, 'memory'), { recursive: true }); const file = path.join(c.workDir, 'memory', 'notes.md'); if (action === 'add') { if (!note) fail('memory add requires text'); fs.appendFileSync(file, `- ${new Date().toISOString()} — ${note}\n`); console.log('Memory recorded.'); } else if (action === 'list') console.log(fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '(no project memory yet)'); else fail('Usage: work memory add "note" | work memory list'); }
+function audit() { const c = collectContext(); const files = []; for (const name of ['package.json','tsconfig.json','vite.config.ts','next.config.js','next.config.ts','Dockerfile','compose.yml','docker-compose.yml','AGENTS.md','WORK.md','.env.example']) if (fs.existsSync(path.join(c.root,name))) files.push(name); const checks = { projectInitialized: Boolean(c.manifest), gitRepository: fs.existsSync(path.join(c.root,'.git')), instructions: c.instructions.length > 0, envExample: fs.existsSync(path.join(c.root,'.env.example')), tests: ['vitest.config.ts','playwright.config.ts','jest.config.js'].some(f => fs.existsSync(path.join(c.root,f))), ci: fs.existsSync(path.join(c.root,'.github','workflows')), devcontainer: fs.existsSync(path.join(c.root,'.devcontainer')) }; console.log(JSON.stringify({ project: c.name, root: c.root, stack: c.technologies, files, checks }, null, 2)); }
 
 if (['help','--help','-h'].includes(command)) { help(); process.exit(0); }
+if (command === 'init') { initProject(); process.exit(0); }
+if (command === 'memory') { memory(args[1], args.slice(2).join(' ')); process.exit(0); }
+if (command === 'audit') { audit(); process.exit(0); }
 if (command === 'agents') { for (const a of agentConfig.agents) console.log(`${a.id.padEnd(14)} ${a.role.padEnd(30)} ${a.modelRole}`); process.exit(0); }
 if (command === 'models') { console.log(`Ollama URL: ${ollamaUrl()}`); for (const r of ['coding','reasoning','fast','general']) console.log(`${r.padEnd(10)} ${ollamaModel(r)}`); process.exit(0); }
 if (command === 'context') { console.log(JSON.stringify(collectContext(), null, 2)); process.exit(0); }
 if (command === 'mcp') { execFileSync(process.execPath, [path.join(runtimeRoot, 'work-mcp.mjs')], { stdio: 'inherit' }); process.exit(0); }
-if (command === 'status' || command === 'doctor') {
-  const c = collectContext(); console.log(`Project: ${c.name}\nRoot:    ${c.root}\nBranch:  ${c.branch}\nStack:   ${c.technologies.join(', ') || 'undetected'}`);
-  try { const data = JSON.parse(run('curl', ['-fsS', `${ollamaUrl()}/api/tags`])); const models = (data.models || []).map(m => m.name); console.log(`Ollama:  ONLINE (${ollamaUrl()})\nModels:  ${models.join(', ') || '(none)'}`); if (command === 'doctor' && !models.some(m => m === ollamaModel('coding') || m.startsWith(`${ollamaModel('coding')}:`))) console.log(`Warning: coding model '${ollamaModel('coding')}' is not installed.`); }
-  catch { console.log(`Ollama:  OFFLINE (${ollamaUrl()})`); if (command === 'doctor') process.exitCode = 1; }
-  process.exit();
-}
-const mode = ['ask','plan','debug','review'].includes(command) ? command : 'ask';
-const task = input || (mode === 'review' && args[0] ? `Review ${args[0]}` : args.join(' '));
-if (!task) { help(); process.exit(0); }
-const role = mode === 'plan' ? 'architect' : mode === 'debug' ? 'debug' : mode === 'review' ? 'review' : 'frontend';
-const agent = agentConfig.agents.find(a => a.id === role);
-const c = collectContext();
-const prompt = `You are the ${agent?.role || 'Work Orchestrator'} in a multi-agent software engineering team.\nProject: ${c.name}\nRepository: ${c.root}\nTechnology: ${c.technologies.join(', ') || 'unknown'}\nBranch: ${c.branch}\nGit status:\n${c.gitStatus}\n${c.instructions}\n\nTask:\n${task}\n\nRules: Do not invent APIs or files. State assumptions. Prefer small, verifiable changes. Never claim a change was made unless a tool actually made it.`;
-generate(prompt, ollamaModel(agent?.modelRole || 'coding'));
+if (command === 'status' || command === 'doctor') { const c = collectContext(); console.log(`Project: ${c.name}\nRoot:    ${c.root}\nBranch:  ${c.branch}\nStack:   ${c.technologies.join(', ') || 'undetected'}\nWork:    ${c.manifest ? 'initialized' : 'not initialized'}`); try { const data = JSON.parse(run('curl', ['-fsS', `${ollamaUrl()}/api/tags`])); const models = (data.models || []).map(m => m.name); console.log(`Ollama:  ONLINE (${ollamaUrl()})\nModels:  ${models.join(', ') || '(none)'}`); if (command === 'doctor' && !models.some(m => m === ollamaModel('coding') || m.startsWith(`${ollamaModel('coding')}:`))) console.log(`Warning: coding model '${ollamaModel('coding')}' is not installed.`); } catch { console.log(`Ollama:  OFFLINE (${ollamaUrl()})`); if (command === 'doctor') process.exitCode = 1; } process.exit(); }
+const mode = ['ask','plan','debug','review'].includes(command) ? command : 'ask'; const task = input || (mode === 'review' && args[0] ? `Review ${args[0]}` : args.join(' ')); if (!task) { help(); process.exit(0); } const role = mode === 'plan' ? 'architect' : mode === 'debug' ? 'debug' : mode === 'review' ? 'review' : 'frontend'; const agent = agentConfig.agents.find(a => a.id === role); const c = collectContext(); const prompt = `You are the ${agent?.role || 'Work Orchestrator'} in a multi-agent software engineering team.\nProject: ${c.name}\nRepository: ${c.root}\nTechnology: ${c.technologies.join(', ') || 'unknown'}\nBranch: ${c.branch}\nGit status:\n${c.gitStatus}\nProject manifest: ${JSON.stringify(c.manifest || {})}\n${c.instructions}\n\nTask:\n${task}\n\nRules: Do not invent APIs or files. State assumptions. Prefer small, verifiable changes. Never claim a change was made unless a tool actually made it.`; generate(prompt, ollamaModel(agent?.modelRole || 'coding'));
