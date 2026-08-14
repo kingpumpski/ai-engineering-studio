@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "work": {
+      "command": "work-mcp",
+      "args": [],
+      "env": {
+        "OLLAMA_BASE_URL": "http://ollama:11434"
+      }
+    }
+  }
+}
