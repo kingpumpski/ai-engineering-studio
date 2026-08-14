@@ -1,0 +1,75 @@
+{
+  "schemaVersion": "1.0",
+  "defaults": {
+    "provider": "ollama",
+    "model": "qwen3-coder",
+    "fallbackProviders": ["openrouter", "github-copilot", "ollama"]
+  },
+  "providers": {
+    "ollama": {
+      "type": "local",
+      "baseUrl": "http://127.0.0.1:11434",
+      "requiresApiKey": false,
+      "models": {
+        "coding": { "env": "WORK_OLLAMA_CODING_MODEL", "default": "qwen3-coder" },
+        "reasoning": { "env": "WORK_OLLAMA_REASONING_MODEL", "default": "qwen3" },
+        "fast": { "env": "WORK_OLLAMA_FAST_MODEL", "default": "gemma3:4b" },
+        "general": { "env": "WORK_OLLAMA_GENERAL_MODEL", "default": "llama3.3" }
+      }
+    },
+    "openrouter": {
+      "type": "openai-compatible",
+      "baseUrlEnv": "OPENROUTER_BASE_URL",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "requiresApiKey": true,
+      "enabledWhenConfigured": true
+    },
+    "github-copilot": {
+      "type": "hosted-extension",
+      "requiresApiKey": false,
+      "enabledWhenConfigured": true,
+      "note": "Use the IDE/agent integration rather than storing a Copilot token in this repository."
+    },
+    "openai": {
+      "type": "openai-compatible",
+      "baseUrl": "https://api.openai.com/v1",
+      "apiKeyEnv": "OPENAI_API_KEY",
+      "requiresApiKey": true,
+      "enabledWhenConfigured": true
+    },
+    "anthropic": {
+      "type": "anthropic",
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "requiresApiKey": true,
+      "enabledWhenConfigured": true
+    },
+    "google": {
+      "type": "google",
+      "apiKeyEnv": "GOOGLE_API_KEY",
+      "requiresApiKey": true,
+      "enabledWhenConfigured": true
+    },
+    "deepseek": {
+      "type": "openai-compatible",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKeyEnv": "DEEPSEEK_API_KEY",
+      "requiresApiKey": true,
+      "enabledWhenConfigured": true
+    },
+    "huggingface": {
+      "type": "hosted-inference",
+      "apiKeyEnv": "HF_TOKEN",
+      "requiresApiKey": true,
+      "enabledWhenConfigured": true
+    }
+  },
+  "modelSelectionPolicy": {
+    "architecture": ["ollama", "openrouter", "github-copilot"],
+    "implementation": ["ollama", "github-copilot", "openrouter"],
+    "debugging": ["ollama", "github-copilot", "openrouter"],
+    "research": ["github-copilot", "openrouter", "ollama"],
+    "security": ["ollama", "github-copilot", "openrouter"],
+    "documentation": ["ollama", "github-copilot", "openrouter"],
+    "quick": ["ollama"]
+  }
+}
