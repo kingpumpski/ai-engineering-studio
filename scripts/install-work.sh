@@ -8,6 +8,7 @@ mkdir -p "${INSTALL_DIR}/config" "${BIN_DIR}"
 
 cp "${ROOT}/scripts/work.mjs" "${INSTALL_DIR}/work.mjs"
 cp "${ROOT}/scripts/work-mcp.mjs" "${INSTALL_DIR}/work-mcp.mjs"
+cp "${ROOT}/scripts/project-context.mjs" "${INSTALL_DIR}/project-context.mjs"
 rm -rf "${INSTALL_DIR}/config"
 cp -R "${ROOT}/config" "${INSTALL_DIR}/config"
 
@@ -25,5 +26,5 @@ if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
   echo "Add ${BIN_DIR} to PATH (for example: export PATH=\"\$HOME/.local/bin:\$PATH\")"
 fi
 
-echo "work installed globally for this user at ${BIN_DIR}/work"
+echo "work runtime installed globally for this user at ${BIN_DIR}/work"
 "${BIN_DIR}/work" status || true
