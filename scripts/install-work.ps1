@@ -6,6 +6,7 @@ $BinDir = Join-Path $HOME 'bin'
 
 New-Item -ItemType Directory -Force -Path $InstallDir, $BinDir | Out-Null
 Copy-Item (Join-Path $Root 'scripts/work.mjs') (Join-Path $InstallDir 'work.mjs') -Force
+Copy-Item (Join-Path $Root 'scripts/work-mcp.mjs') (Join-Path $InstallDir 'work-mcp.mjs') -Force
 if (Test-Path (Join-Path $InstallDir 'config')) { Remove-Item (Join-Path $InstallDir 'config') -Recurse -Force }
 Copy-Item (Join-Path $Root 'config') (Join-Path $InstallDir 'config') -Recurse -Force
 
@@ -14,6 +15,11 @@ $Cmd = Join-Path $BinDir 'work.cmd'
 @echo off
 node "%USERPROFILE%\.work-agent\work.mjs" %*
 "@ | Set-Content -Path $Cmd -Encoding ASCII
+$McpCmd = Join-Path $BinDir 'work-mcp.cmd'
+@"
+@echo off
+node "%USERPROFILE%\.work-agent\work-mcp.mjs" %*
+"@ | Set-Content -Path $McpCmd -Encoding ASCII
 
 $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 if (-not (($UserPath -split ';') -contains $BinDir)) {
@@ -22,4 +28,5 @@ if (-not (($UserPath -split ';') -contains $BinDir)) {
 }
 
 Write-Host "work installed at $Cmd"
+Write-Host "work-mcp installed at $McpCmd"
 Write-Host "Open a new terminal, then run: work status"
