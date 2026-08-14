@@ -1,6 +1,6 @@
 # AI Engineering Studio
 
-AI Engineering Studio is the team's reusable, provider-agnostic AI engineering control plane. It provides one `work` interface for terminals and IDEs, a local-first Ollama runtime, MCP integration, project discovery, specialist-agent workflows, safety policies and optional cloud providers.
+AI Engineering Studio is the team's reusable, provider-agnostic AI engineering control plane. It provides one `work` interface for terminals and IDEs, a local-first Ollama runtime, MCP integration, project discovery, specialist-agent workflows, safety policies, task execution and optional cloud providers.
 
 ## Core principle
 
@@ -38,12 +38,45 @@ work memory add "Decision: use Supabase RLS for tenant isolation"
 work memory list
 
 work plan "design the next module"
+work task list
+work task run <task-id>
+work task approve <task-id> write
 work "implement seller authentication"
 work debug "investigate this build error"
 work review
 ```
 
 `work init` creates a project-local `.work/` state directory containing a manifest, memory, decisions and task state. The directory is designed to hold project-specific AI context without coupling the project to the Studio repository.
+
+## Task execution
+
+`work plan` classifies a request into a workflow and creates an execution graph. Tasks persist their state under `.work/tasks/<task-id>/` and support explicit approval gates before write-capable stages.
+
+```text
+Request
+  ↓
+Planner
+  ↓
+Agent graph
+  ↓
+Policy / approval
+  ↓
+Execution
+  ↓
+QA / review
+```
+
+The current runtime intentionally stops before making unrestricted repository changes. The next runtime layer will connect approved steps to real file/test/Git tools.
+
+## Model routing
+
+`work route "task description"` selects a model role using the local-first routing policy. The default provider is Ollama. Cloud providers are fallback adapters and require their own credentials.
+
+```bash
+work route "debug a production authentication failure"
+```
+
+The policy prefers local models, protects secrets from model prompts and does not require a paid API plan.
 
 ## Architecture
 
@@ -53,32 +86,29 @@ IDE / Terminal / Codespace
           v
        work CLI
           |
-          +-------------------+
-          |                   |
-          v                   v
- Project Discovery          Work MCP
-          |                   |
-          +---------+---------+
-                    v
-             Work Orchestrator
-                    |
-       +------------+-------------+
-       |            |             |
-       v            v             v
-    Planning      Agents       Tool Policy
-       |            |             |
-       +------------+-------------+
-                    v
-               Model Router
-                    |
-        +-----------+-----------+
-        |           |           |
-        v           v           v
-      Ollama     Copilot    Cloud adapters
-       local        IDE        optional
-        |
-        v
-   Local models
+   +------+-------+
+   |              |
+   v              v
+Project Discovery  Work MCP
+   |              |
+   +------+-------+
+          v
+   Work Orchestrator
+          |
+   +------+------+------+
+   |             |      |
+Planning       Agents  Policy
+   |             |      |
+   +------+------+------+
+          |
+      Task Queue
+          |
+      Model Router
+          |
+  +-------+--------+
+  |       |        |
+Ollama  Copilot  Cloud
+ local    IDE    optional
 ```
 
 ## Project bootstrap
@@ -95,11 +125,9 @@ Run `work init` inside any repository. It creates:
 └── tasks/
 ```
 
-The manifest records project identity, detected stack, default workflow/model role and permission defaults. Sensitive runtime sessions are intended to remain local and are ignored by the generated `.work/.gitignore`.
-
 ## MCP
 
-The repository includes `scripts/work-mcp.mjs` and `.vscode/mcp.json`. The MCP server currently exposes deliberately constrained tools for project context, Git status, safe file reads, repository search and advisory model tasks. Write, shell, commit, push and deployment operations remain approval-gated by design.
+The repository includes `scripts/work-mcp.mjs` and `.vscode/mcp.json`. The MCP server exposes deliberately constrained tools for project context, Git status, safe file reads, repository search and advisory model tasks. Write, shell, commit, push and deployment operations remain approval-gated by design.
 
 ## Ollama
 
@@ -128,8 +156,6 @@ The runtime follows least privilege:
 - deployment: denied by default
 - secrets/private keys: protected
 
-This boundary is intentional: the platform is being designed to work across real repositories without giving an AI unrestricted control of developer machines or production systems.
-
 ## Development
 
 ```bash
@@ -141,29 +167,31 @@ npm run build
 
 ## Roadmap
 
-### Phase 1 — Runtime foundation
+### Completed foundations
 - Local-first Ollama
 - Provider/model registry
 - Global `work` CLI
 - Codespaces startup
 - Specialist-agent registry
-
-### Phase 2 — Engineering control plane
 - Project discovery
 - `work init` project manifests
 - Project memory
 - MCP bridge
 - Tool permissions
 - CI validation
-
-### Phase 3 — Autonomous engineering runtime
-- Real model routing and health scoring
 - Persistent task queue
-- Agent session/audit logs
-- Safe patch/write tools
+- Deterministic task planner
+- Capability-aware model routing
+- Windows/Linux/macOS installers
+
+### Next engineering layer
+- Real approved file patch/write executor
+- Agent session and audit logs
+- Test execution and feedback loops
+- Git worktree isolation
 - GitHub issue/PR/CI workflows
 - Multi-agent execution graphs
-- Project bootstrap templates
 - Team dashboard and observability
+- Optional remote Work server for shared team execution
 
-The repository is intentionally being developed in these layers so local-first usage works before paid providers or advanced autonomy are required.
+The architecture is intentionally layered so local-first usage works before paid providers, remote infrastructure or advanced autonomy are required.
