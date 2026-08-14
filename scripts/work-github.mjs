@@ -1,0 +1,16 @@
+#!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+
+const args=process.argv.slice(2); const command=args[0]; const value=args.slice(1).join(' ').trim();
+const root=process.cwd(); const work=path.join(root,'.work');
+function fail(m){console.error(`work github: ${m}`);process.exit(1)}
+function gh(a){try{return execFileSync('gh',a,{cwd:root,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim()}catch(e){fail(e.stderr?.trim()||'GitHub CLI unavailable or authentication failed')}}
+function repo(){return gh(['repo','view','--json','nameWithOwner','-q','.nameWithOwner'])}
+function ensure(){if(!fs.existsSync(work))fail('run work init first')}
+ensure();
+if(command==='issue'){const n=Number(value);if(!n)fail('usage: work github issue <number>');const r=gh(['issue','view',String(n),'--json','number,title,body,state,labels,url']);fs.mkdirSync(path.join(work,'github'),{recursive:true});fs.writeFileSync(path.join(work,'github',`issue-${n}.json`),r+'\n');console.log(r);process.exit(0)}
+if(command==='import'){const n=Number(value);if(!n)fail('usage: work github import <issue-number>');const issue=JSON.parse(gh(['issue','view',String(n),'--json','number,title,body,state,labels,url']));const id=`github-${n}-${String(issue.title).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40)}`;const dir=path.join(work,'tasks',id);fs.mkdirSync(dir,{recursive:true});const now=new Date().toISOString();const task={id,title:issue.title,status:'queued',createdAt:now,updatedAt:now,source:{type:'github-issue',number:n,url:issue.url,repository:repo()},workflow:'build',modelRole:'coding',steps:[{id:'requirements',agent:'product',status:'queued',requiresApproval:false},{id:'architecture',agent:'architect',status:'queued',requiresApproval:false},{id:'implementation',agent:'developer',status:'queued',requiresApproval:true},{id:'testing',agent:'qa',status:'queued',requiresApproval:false},{id:'review',agent:'review',status:'queued',requiresApproval:false}],approvals:[]};fs.writeFileSync(path.join(dir,'task.json'),JSON.stringify(task,null,2)+'\n');console.log(`Imported GitHub issue #${n} as task ${id}`);process.exit(0)}
+if(command==='pr'){const taskId=value;if(!taskId)fail('usage: work github pr <task-id>');const f=path.join(work,'tasks',taskId,'task.json');if(!fs.existsSync(f))fail(`task '${taskId}' not found`);const task=JSON.parse(fs.readFileSync(f,'utf8'));if(task.status!=='review')fail(`task must be in review; current status is ${task.status}`);const branch=gh(['branch','--show-current']);if(!branch||branch==='main'||branch==='master')fail('refusing to create PR from the default branch');const body=`## AI Engineering Studio task\n\n- Task: \`${task.id}\`\n- Workflow: ${task.workflow}\n- Model role: ${task.modelRole}\n- Verification: ${task.verification?.failures===0?'passed':'see task session logs'}\n\nThis is a **draft PR** prepared by the Work runtime. Human review is required before merge.`;const out=gh(['pr','create','--draft','--title',task.title,'--body',body]);console.log(out);process.exit(0)}
+console.log(`Usage:\n  work github issue <number>\n  work github import <issue-number>\n  work github pr <task-id>`);

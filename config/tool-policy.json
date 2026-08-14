@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "defaults": {
+    "read": true,
+    "search": true,
+    "gitStatus": true,
+    "write": false,
+    "shell": false,
+    "network": false,
+    "gitCommit": false,
+    "gitPush": false,
+    "deploy": false
+  },
+  "approvalRequired": [
+    "write",
+    "shell",
+    "gitCommit",
+    "gitPush",
+    "deploy"
+  ],
+  "protectedPaths": [
+    ".env",
+    ".env.*",
+    "*.pem",
+    "*.key",
+    ".github/workflows/*"
+  ],
+  "notes": "The MCP foundation is read-only/advisory. Future write-capable tools must enforce this policy and require explicit human approval."
+}

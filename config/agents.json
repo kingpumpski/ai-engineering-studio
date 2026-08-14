@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.1",
+  "orchestrator": {
+    "id": "work",
+    "name": "Work Orchestrator",
+    "defaultProvider": "ollama",
+    "defaultModelRole": "coding",
+    "humanApprovalForWrites": true,
+    "allowShellExecution": true,
+    "allowNetwork": false,
+    "supervisor": {"enabled":true,"maxConcurrentAgents":3,"maxWorkflowAgents":7,"requireAgentOutputBeforeNext":true,"requireVerificationBeforeReview":true,"requireApprovalBeforeWrite":true}
+  },
+  "agents": [
+    { "id": "architect", "role": "Software Architect", "capabilities": ["architecture", "system-design", "planning"], "modelRole": "reasoning" },
+    { "id": "requirements", "role": "Requirements Engineer", "capabilities": ["requirements", "acceptance-criteria", "specification"], "modelRole": "reasoning" },
+    { "id": "frontend", "role": "Frontend Engineer", "capabilities": ["react", "nextjs", "typescript", "ui"], "modelRole": "coding" },
+    { "id": "backend", "role": "Backend Engineer", "capabilities": ["node", "python", "api", "auth"], "modelRole": "coding" },
+    { "id": "database", "role": "Database Engineer", "capabilities": ["postgres", "supabase", "sql", "migrations"], "modelRole": "reasoning" },
+    { "id": "devops", "role": "DevOps Engineer", "capabilities": ["docker", "ci", "cd", "cloud"], "modelRole": "coding" },
+    { "id": "security", "role": "Security Engineer", "capabilities": ["owasp", "threat-modeling", "secrets", "dependency-audit"], "modelRole": "reasoning" },
+    { "id": "qa", "role": "QA Engineer", "capabilities": ["tests", "vitest", "playwright", "regression"], "modelRole": "coding" },
+    { "id": "debug", "role": "Debugging Specialist", "capabilities": ["logs", "stack-traces", "root-cause", "repair"], "modelRole": "coding" },
+    { "id": "review", "role": "Code Reviewer", "capabilities": ["review", "quality", "security", "architecture"], "modelRole": "reasoning" },
+    { "id": "docs", "role": "Documentation Agent", "capabilities": ["readme", "api-docs", "architecture-docs"], "modelRole": "fast" },
+    { "id": "research", "role": "Research Agent", "capabilities": ["documentation", "comparison", "standards"], "modelRole": "general" },
+    { "id": "github", "role": "GitHub Specialist", "capabilities": ["git", "github", "pull-requests", "actions"], "modelRole": "reasoning" },
+    { "id": "migration", "role": "Legacy Migration Agent", "capabilities": ["migration", "modernization", "refactoring"], "modelRole": "coding" }
+  ],
+  "workflows": {
+    "build": ["requirements", "architect", "frontend", "backend", "database", "qa", "review"],
+    "debug": ["debug", "database", "backend", "qa", "review"],
+    "review": ["security", "review", "qa"],
+    "release": ["qa", "security", "github", "devops", "review"]
+  }
+}

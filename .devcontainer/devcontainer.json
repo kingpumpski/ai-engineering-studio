@@ -1,0 +1,26 @@
+{
+  "name": "AI Engineering Studio",
+  "dockerComposeFile": "compose.yml",
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/ai-engineering-studio",
+  "shutdownAction": "stopCompose",
+  "remoteUser": "node",
+  "postCreateCommand": "bash -lc 'echo export PATH=\"$HOME/.local/bin:$PATH\" >> $HOME/.bashrc && export PATH=\"$HOME/.local/bin:$PATH\" && bash scripts/bootstrap-ollama.sh && bash scripts/install-work.sh'",
+  "postStartCommand": "bash -lc 'curl -fsS http://ollama:11434/api/tags >/dev/null && echo \"AI runtime: Ollama online\" || echo \"AI runtime: Ollama unavailable\"'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "ms-vscode-remote.remote-containers",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "terminal.integrated.env.linux": {
+          "OLLAMA_BASE_URL": "http://ollama:11434"
+        }
+      }
+    }
+  }
+}
