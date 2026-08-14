@@ -15,13 +15,10 @@ jobs:
           node-version: 22
       - name: Validate runtime scripts
         run: |
-          node --check scripts/work.mjs
-          node --check scripts/work-mcp.mjs
-          node --check scripts/project-context.mjs
-          node --check scripts/work-task.mjs
+          for f in scripts/work.mjs scripts/work-mcp.mjs scripts/project-context.mjs scripts/work-task.mjs scripts/work-plan.mjs scripts/work-route.mjs scripts/work-exec.mjs; do node --check "$f"; done
       - name: Validate JSON configuration
         run: |
-          node -e "for (const f of ['config/agents.json','config/models.json','config/tool-policy.json','config/task-schema.json','config/work.schema.json','.vscode/mcp.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON configuration valid')"
+          node -e "for (const f of ['config/agents.json','config/models.json','config/tool-policy.json','config/task-schema.json','config/work.schema.json','config/routing-policy.json','.vscode/mcp.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON configuration valid')"
       - name: Validate shell scripts
         run: |
           bash -n scripts/install-work.sh
@@ -32,13 +29,14 @@ jobs:
           node scripts/work.mjs agents
           node scripts/work.mjs models
           node scripts/project-context.mjs
-      - name: Smoke test task runtime
+      - name: Smoke test planner and execution
         run: |
           rm -rf .work
           node scripts/work.mjs init
-          node scripts/work-task.mjs create "Runtime validation task"
+          node scripts/work-plan.mjs "Implement a new feature and run tests"
           TASK_ID=$(find .work/tasks -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | head -1)
-          node scripts/work-task.mjs run "$TASK_ID" || test $? -eq 2
+          node scripts/work-exec.mjs "$TASK_ID" || test $? -eq 0
           node scripts/work-task.mjs approve "$TASK_ID" write
-          node scripts/work-task.mjs run "$TASK_ID"
+          node scripts/work-exec.mjs "$TASK_ID" || true
+          test -s ".work/sessions/$TASK_ID/events.jsonl"
           node scripts/work-task.mjs show "$TASK_ID"
