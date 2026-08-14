@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "defaultProvider": "ollama",
+  "fallbackProviders": ["openrouter", "github-copilot", "openai", "anthropic", "google", "deepseek"],
+  "roles": {
+    "fast": { "preferred": ["qwen3:8b", "qwen3:4b"], "fallback": ["gemma3:4b"] },
+    "coding": { "preferred": ["qwen3-coder:latest", "qwen3:8b"], "fallback": ["deepseek-coder-v2:16b", "qwen2.5-coder:14b"] },
+    "reasoning": { "preferred": ["qwen3:30b", "qwen3-coder:30b", "qwen3:8b"], "fallback": ["deepseek-r1:14b", "gemma3:27b"] },
+    "general": { "preferred": ["qwen3:8b", "gemma3:12b"], "fallback": ["llama3.2:8b"] }
+  },
+  "rules": [
+    { "when": ["debug", "architecture", "security-review", "release"], "role": "reasoning" },
+    { "when": ["build", "implementation", "refactor", "test"], "role": "coding" },
+    { "when": ["explain", "summarize", "status"], "role": "fast" }
+  ],
+  "constraints": { "preferLocal": true, "requireApiKeyForCloud": true, "neverExposeSecretsToModels": true }
+}
