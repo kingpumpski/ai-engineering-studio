@@ -3,7 +3,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTALL_DIR="${HOME}/.work-agent"; BIN_DIR="${HOME}/.local/bin"
 mkdir -p "${INSTALL_DIR}/config" "${BIN_DIR}"
-for f in work.mjs work-mcp.mjs project-context.mjs work-task.mjs work-plan.mjs work-route.mjs work-exec.mjs work-sandbox.mjs work-patch.mjs; do cp "${ROOT}/scripts/${f}" "${INSTALL_DIR}/${f}"; done
+for f in work.mjs work-mcp.mjs project-context.mjs work-task.mjs work-plan.mjs work-route.mjs work-exec.mjs work-sandbox.mjs work-patch.mjs work-verify.mjs work-diagnose.mjs; do cp "${ROOT}/scripts/${f}" "${INSTALL_DIR}/${f}"; done
 rm -rf "${INSTALL_DIR}/config"; cp -R "${ROOT}/config" "${INSTALL_DIR}/config"
 cat > "${BIN_DIR}/work" <<EOF
 #!/usr/bin/env bash
@@ -14,6 +14,8 @@ case "\${1:-}" in
   exec) shift; exec node "${INSTALL_DIR}/work-exec.mjs" "\$@" ;;
   sandbox) exec node "${INSTALL_DIR}/work-sandbox.mjs" "\$@" ;;
   patch) shift; exec node "${INSTALL_DIR}/work-patch.mjs" "\$@" ;;
+  verify) shift; exec node "${INSTALL_DIR}/work-verify.mjs" "\$@" ;;
+  diagnose) shift; exec node "${INSTALL_DIR}/work-diagnose.mjs" "\$@" ;;
   *) exec node "${INSTALL_DIR}/work.mjs" "\$@" ;;
 esac
 EOF
