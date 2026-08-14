@@ -39,8 +39,10 @@ work memory list
 
 work plan "design the next module"
 work task list
-work task run <task-id>
+work sandbox create <task-id>
 work task approve <task-id> write
+work exec <task-id>
+work sandbox status
 work "implement seller authentication"
 work debug "investigate this build error"
 work review
@@ -61,12 +63,38 @@ Agent graph
   ↓
 Policy / approval
   ↓
-Execution
+Isolated Git worktree
+  ↓
+Execution + tests
+  ↓
+Session audit
   ↓
 QA / review
 ```
 
-The current runtime intentionally stops before making unrestricted repository changes. The next runtime layer will connect approved steps to real file/test/Git tools.
+The execution engine records structured events under `.work/sessions/<task-id>/events.jsonl`. This provides a foundation for a future team dashboard and autonomous feedback loops.
+
+## Isolated agent sandboxes
+
+Before allowing an agent to modify a repository, create a task-specific Git worktree:
+
+```bash
+work sandbox create <task-id>
+```
+
+The sandbox is created on a dedicated branch:
+
+```text
+work/<task-id>
+```
+
+and lives under `.work/sandboxes/<task-id>/`. This prevents an agent's experimental changes from silently contaminating the developer's active branch.
+
+Remove it after review:
+
+```bash
+work sandbox remove <task-id>
+```
 
 ## Model routing
 
@@ -109,6 +137,15 @@ Planning       Agents  Policy
   |       |        |
 Ollama  Copilot  Cloud
  local    IDE    optional
+          |
+          v
+     Git Sandbox
+          |
+          v
+      Test / QA
+          |
+          v
+       Review
 ```
 
 ## Project bootstrap
@@ -122,7 +159,9 @@ Run `work init` inside any repository. It creates:
 ├── .gitignore
 ├── memory/
 ├── decisions/
-└── tasks/
+├── tasks/
+├── sandboxes/
+└── sessions/
 ```
 
 ## MCP
@@ -155,6 +194,7 @@ The runtime follows least privilege:
 - Git commit/push: approval required
 - deployment: denied by default
 - secrets/private keys: protected
+- agent workspaces: isolated by Git worktree
 
 ## Development
 
@@ -183,12 +223,14 @@ npm run build
 - Deterministic task planner
 - Capability-aware model routing
 - Windows/Linux/macOS installers
+- Approval-gated execution sessions
+- Structured execution audit logs
+- Isolated Git worktrees
 
 ### Next engineering layer
-- Real approved file patch/write executor
-- Agent session and audit logs
-- Test execution and feedback loops
-- Git worktree isolation
+- Real model-driven patch generation and review
+- Test failure feedback loops
+- Git diff approval UI
 - GitHub issue/PR/CI workflows
 - Multi-agent execution graphs
 - Team dashboard and observability
