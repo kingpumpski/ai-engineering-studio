@@ -2,19 +2,22 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+INSTALL_DIR="${HOME}/.work-agent"
 BIN_DIR="${HOME}/.local/bin"
-mkdir -p "${BIN_DIR}"
+mkdir -p "${INSTALL_DIR}" "${BIN_DIR}"
+
+cp "${ROOT}/scripts/work.mjs" "${INSTALL_DIR}/work.mjs"
+cp -R "${ROOT}/config" "${INSTALL_DIR}/config"
 
 cat > "${BIN_DIR}/work" <<EOF
 #!/usr/bin/env bash
-exec node "${ROOT}/scripts/work.mjs" "\$@"
+exec node "${INSTALL_DIR}/work.mjs" "\$@"
 EOF
 chmod +x "${BIN_DIR}/work"
 
-case ":${PATH}:" in
-  *":${BIN_DIR}:"*) ;;
-  *) echo "Add ${BIN_DIR} to PATH (for example: export PATH=\"\$HOME/.local/bin:\$PATH\")" ;;
-esac
+if [[ ":${PATH}:" != *":${BIN_DIR}:"* ]]; then
+  echo "Add ${BIN_DIR} to PATH (for example: export PATH=\"\$HOME/.local/bin:\$PATH\")"
+fi
 
-echo "work installed at ${BIN_DIR}/work"
+echo "work installed globally for this user at ${BIN_DIR}/work"
 "${BIN_DIR}/work" status || true
