@@ -1,0 +1,31 @@
+name: Runtime Validation
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  validate-runtime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate runtime scripts
+        run: |
+          node --check scripts/work.mjs
+          node --check scripts/work-mcp.mjs
+      - name: Validate JSON configuration
+        run: |
+          node -e "for (const f of ['config/agents.json','config/models.json','config/tool-policy.json','.vscode/mcp.json']) JSON.parse(require('fs').readFileSync(f,'utf8')); console.log('JSON configuration valid')"
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/install-work.sh
+          bash -n scripts/bootstrap-ollama.sh
+      - name: Smoke test project discovery
+        run: |
+          node scripts/work.mjs context
+          node scripts/work.mjs agents
+          node scripts/work.mjs models
