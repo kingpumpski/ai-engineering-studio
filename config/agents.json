@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "orchestrator": {
     "id": "work",
     "name": "Work Orchestrator",
@@ -7,7 +7,8 @@
     "defaultModelRole": "coding",
     "humanApprovalForWrites": true,
     "allowShellExecution": true,
-    "allowNetwork": false
+    "allowNetwork": false,
+    "supervisor": {"enabled":true,"maxConcurrentAgents":3,"maxWorkflowAgents":7,"requireAgentOutputBeforeNext":true,"requireVerificationBeforeReview":true,"requireApprovalBeforeWrite":true}
   },
   "agents": [
     { "id": "architect", "role": "Software Architect", "capabilities": ["architecture", "system-design", "planning"], "modelRole": "reasoning" },
